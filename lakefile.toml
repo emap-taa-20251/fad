@@ -1,0 +1,10 @@
+name = "fad"
+version = "0.1.0"
+defaultTargets = ["fad"]
+
+[[lean_lib]]
+name = "Fad"
+
+[[lean_exe]]
+name = "fad"
+root = "Main"
