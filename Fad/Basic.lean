@@ -1,12 +1,9 @@
 
-def hello₁ : String := "Hello world!"
 
-#eval hello₁
+def hello : String := "Hello world!"
 
 def hello₂ (s : String) :=
  s!"Hello {s}!"
-
-#eval hello₂ "Alexandre"
 
 
 def factorial₀ (n : Nat) : Nat :=
@@ -15,13 +12,14 @@ def factorial₀ (n : Nat) : Nat :=
   else
    n * factorial₀ (n - 1)
 
-#eval 5 - 10
 
 def factorial₁ (n : Nat) : Nat :=
   if n ≤ 0 then
    1
   else
    n * factorial₁ (n - 1)
+
+-- #eval 2 - 3
 
 def factorial₂ (n : Nat) : Nat :=
   if h : n == 0 then
@@ -38,6 +36,8 @@ def factorial₃ : Nat → Nat
 | n + 1 => factorial₃ n * (n + 1)
 
 
+/-
 #eval factorial₁ 11
 #eval factorial₂ 11
 #eval factorial₃ 11
+-/
