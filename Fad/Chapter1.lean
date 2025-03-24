@@ -1,7 +1,7 @@
 
 namespace Chapter1
 
--- 1.1 Basic types and functions
+-- ## Section 1.1 Basic types and functions
 
 def map : (a → b) → List a → List b
 | _, [] => []
@@ -10,34 +10,45 @@ def map : (a → b) → List a → List b
 example : map (· * 10) [1,2,3] = [10,20,30] := rfl
 example : map (λ x => x * 10) [1,2,3] = [10,20,30] := rfl
 
+
 def filter {a : Type}  : (a → Bool) → List a → List a
 | _, [] => []
 | p, (x :: xs) => if p x then x :: filter p xs else filter p xs
 
 example : filter (· > 5) [1,2,2,4,5,8,6] = [8,6] := rfl
 
+
 def foldr {a b : Type} : (a → b → b) → b → List a → b
 | _, e, [] => e
 | f, e, (x::xs) => f x (foldr f e xs)
 
-def foldl {a b : Type} : (b → a → b) → b → List a → b
-| _, e, [] => e
-| f, e, (x::xs) => foldl f (f e x) xs
+open List in
 
-def length' (xs : List a) : Nat :=
+example : ∀ xs : List Nat, foldr cons [] xs = xs := by
+  intro xs
+  induction xs with
+  | nil => unfold foldr; rfl
+  | cons a as ih => unfold foldr; rewrite [ih]; rfl
+
+
+def label {α : Type} (xs : List α) : List (Nat × α) :=
+  List.zip (List.range xs.length) xs
+
+
+def length₁ (xs : List a) : Nat :=
   foldr (fun _ y => y + 1) 0 xs
 
-def length : List a → Nat := foldr succ 0
+def length₂ : List a → Nat := foldr succ 0
   where succ _ n := n + 1
 
-example : length ["a", "b", "c"] = 3 := by
-  unfold length
+example : length₂ ["a", "b", "c"] = 3 := by
+  unfold length₂
   unfold foldr
   unfold foldr
   unfold foldr
-  rewrite [length.succ]
-  rewrite [length.succ]
-  rewrite [length.succ]
+  rewrite [length₂.succ]
+  rewrite [length₂.succ]
+  rewrite [length₂.succ]
   rewrite [foldr.eq_1]
   rfl
 
@@ -51,6 +62,14 @@ example : foldr Nat.add 0 [1,2,3] = 6 := by
   rewrite (config := {occs := .pos [1]}) [Nat.add]
   rfl
 
+
+def foldl {a b : Type} : (b → a → b) → b → List a → b
+| _, e, [] => e
+| f, e, (x::xs) => foldl f (f e x) xs
+
+def foldl' {a b : Type} (f : b → a → b) (e : b) : List a → b :=
+  foldr (flip f) e ∘ List.reverse
+
 example : foldl Nat.add 0 [1,2,3] = 6 := by
   unfold foldl
   unfold foldl
@@ -61,16 +80,24 @@ example : foldl Nat.add 0 [1,2,3] = 6 := by
   rewrite (config := {occs := .pos [1]}) [Nat.add]
   rfl
 
--- 1.2 Processing lists
+-- ## Section 1.2 Processing lists
 
-def concat1 {a : Type} : List (List a) → List a :=
+def head {α : Type} [Inhabited α] : List α → α :=
+  let f (x : α) _ : α := x
+  List.foldr f default
+
+#eval head ['a', 'b', 'c']
+#eval head [1, 2, 3]
+
+
+def concat₁ {a : Type} : List (List a) → List a :=
  List.foldr List.append []
 
-def concat2 {a : Type} : List (List a) → List a :=
+def concat₂ {a : Type} : List (List a) → List a :=
  List.foldl List.append []
 
-example : concat1 [[1,2,3,4], [5], [6]] = [1,2,3,4,5,6] := by
-  unfold concat1
+example : concat₁ [[1,2,3,4], [5], [6]] = [1,2,3,4,5,6] := by
+  unfold concat₁
   unfold List.foldr
   rw [List.append.eq_2]
   rw [List.append.eq_2]
@@ -86,8 +113,8 @@ example : concat1 [[1,2,3,4], [5], [6]] = [1,2,3,4,5,6] := by
   unfold List.foldr
   rfl
 
-example : concat2 [[1,2,3,4], [5], [6]] = [1,2,3,4,5,6] := by
-  unfold concat2
+example : concat₂ [[1,2,3,4], [5], [6]] = [1,2,3,4,5,6] := by
+  unfold concat₂
   unfold List.foldl
   rw [List.append.eq_1]
   unfold List.foldl
@@ -106,13 +133,17 @@ example : concat2 [[1,2,3,4], [5], [6]] = [1,2,3,4,5,6] := by
   unfold List.foldl
   rfl
 
-open List in
-example : ∀ xs : List Nat, foldr cons [] xs = xs := by
-  intro xs
-  induction xs with
-  | nil => unfold foldr; rfl
-  | cons a as ih => unfold foldr; rewrite [ih]; rfl
 
+def scanl : (b → a → b ) → b → List a → List b
+| _, e, [] => [e]
+| f, e, (x :: xs) => e :: scanl f (f e x) xs
+
+/-
+#eval scanl Nat.add 0 [1,2,3,4]
+#eval scanl Nat.add 42 []
+#eval scanl (λ r n => n :: r)
+  "foo".toList ['a', 'b', 'c', 'd'] |>.map List.asString
+-/
 
 def scanr₀ (f : a → b → b) (q₀ : b) (as : List a) : List b :=
  let rec aux : List a → {l : List b // l ≠ []}
@@ -134,57 +165,8 @@ def scanr : (a → b → b) → b → List a → List b
 #eval scanr Nat.add 42 []
 -/
 
-def scanl : (b → a → b ) → b → List a → List b
-| _, e, [] => [e]
-| f, e, (x :: xs) => e :: scanl f (f e x) xs
 
-/-
-#eval scanl Nat.add 0 [1,2,3,4]
-#eval scanl Nat.add 42 []
-#eval scanl (λ r n => n :: r)
-  "foo".toList ['a', 'b', 'c', 'd'] |>.map List.asString
--/
-
-def inits {a : Type} : List a → List (List a)
-| [] => [[]]
-| (x :: xs) => [] :: (inits xs).map (fun ys => x :: ys)
-
-def tails {a : Type} : List a → List (List a)
-| [] => [[]]
-| (x :: xs) => (x :: xs) :: tails xs
-
-theorem map_compose {α β γ : Type} (f : β → γ) (g : α → β) (l : List α) :
-  map (f ∘ g) l = map f (map g l) := by
-  induction l with
-  | nil => rfl
-  | cons x xs ih =>
-  simp [map, ih]
-
-theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
-foldl f e ∘ (fun x => y :: x) = foldl f (f e y) := by rfl
-
-theorem map_map {α : Type} (g : α -> α ) (a : List α): List.map g a = map g a := by
-  induction a with
-  | nil => rfl
-  | cons a as ih =>
-    rw [map,List.map]
-    rw [ih]
-    done
-
-example {a b : Type} (f : b → a → b) (e : b) :
-   map (foldl f e) ∘ inits = scanl f e := by
-  funext xs
-  induction xs generalizing e with
-  | nil => simp [map, inits, foldl, scanl]
-  | cons x xs ih =>
-    rw [Function.comp]
-    rw [inits,map,foldl,map_map,←map_compose]
-    rw [foldl_comp,scanl]
-    have hx := ih (f e x)
-    rw [← hx]
-    simp
-
--- 1.3 Inductive and recursive definitions
+-- ## Section 1.3 Inductive and recursive definitions
 
 def inserts {a : Type} : a → List a → List (List a)
 | x, [] => [[x]]
@@ -194,7 +176,7 @@ def inserts {a : Type} : a → List a → List (List a)
 
 
 def concatMap (f : a → List b) : List a → List b :=
- concat1 ∘ (List.map f)
+ concat₁ ∘ (List.map f)
 
 -- #eval concatMap (String.toList ·) ["aa", "bb", "cc"]
 
@@ -272,7 +254,47 @@ partial def while' (p : a → Bool) := until' (not ∘ p)
 -- #eval until' (· > 10) (· + 1) 0
 
 
--- 1.4 Fusion
+-- ## Section 1.4 Fusion
+
+
+def inits {a : Type} : List a → List (List a)
+| [] => [[]]
+| (x :: xs) => [] :: (inits xs).map (fun ys => x :: ys)
+
+def tails {a : Type} : List a → List (List a)
+| [] => [[]]
+| (x :: xs) => (x :: xs) :: tails xs
+
+theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
+foldl f e ∘ (fun x => y :: x) = foldl f (f e y) := by rfl
+
+theorem map_map {α : Type} (g : α -> α ) (a : List α): List.map g a = map g a := by
+  induction a with
+  | nil => rfl
+  | cons a as ih =>
+    rw [map,List.map]
+    rw [ih]
+    done
+
+theorem map_compose {α β γ : Type} (f : β → γ) (g : α → β) (l : List α) :
+  map (f ∘ g) l = map f (map g l) := by
+  induction l with
+  | nil => rfl
+  | cons x xs ih =>
+  simp [map, ih]
+
+example {a b : Type} (f : b → a → b) (e : b) :
+   map (foldl f e) ∘ inits = scanl f e := by
+  funext xs
+  induction xs generalizing e with
+  | nil => simp [map, inits, foldl, scanl]
+  | cons x xs ih =>
+    rw [Function.comp]
+    rw [inits,map,foldl,map_map,← map_compose]
+    rw [foldl_comp,scanl]
+    have hx := ih (f e x)
+    rw [← hx]
+    simp
 
 example {a b c : Type} (f : b → c) (g : a → b) : map f ∘ map g = map (f ∘ g) := by
   funext xs
@@ -301,16 +323,16 @@ theorem foldr_append {α β : Type} (f : α → β → β) (e : β) (xs ys : Lis
     simp [foldr, ih]
 
 example (f : a → a → a)
- : foldr f e ∘ concat1 = foldr (flip (foldr f)) e := by
+ : foldr f e ∘ concat₁ = foldr (flip (foldr f)) e := by
   funext xs
   induction xs with
   | nil =>
     rw [foldr.eq_1, Function.comp]
-    simp [concat1, foldr.eq_1]
+    simp [concat₁, foldr.eq_1]
   | cons y ys ih =>
     rw [Function.comp]
-    simp [concat1]
-    rw [←concat1]
+    simp [concat₁]
+    rw [←concat₁]
     rw [foldr_append]
     rw [foldr]
     rw [flip]
@@ -331,66 +353,12 @@ theorem fusion_th (g : a → b → b) (h : a → b) (h₁ : ∀ x y, h (f x y) =
     rfl
 
 
--- 1.5 Accumulating and tupling
-
-def sum (xs : List Int) := xs.foldl Int.add 0
-
-partial def collapse₀ (xss : List (List Int)) : List Int :=
- help [] xss
- where
-  help : List Int → List (List Int) → List Int
-  | xs, xss =>
-    if (sum xs) > 0 ∨ xss.isEmpty then xs
-    else help (xs.append xss.head!) xss.tail
-
-def collapse₁ (xss : List (List Int)) : List Int :=
- help [] xss
- where
-  help : List Int → List (List Int) → List Int
-  | xs, [] => xs
-  | xs, (as :: bss) =>
-    if (sum xs) > 0 then xs
-    else help (xs.append as) bss
-
-partial def collapse₂ (xss : List (List Int)) : List Int :=
-  help (0, []) (labelsum xss)
-  where
-   labelsum (xss : List (List Int)) : List (Int × List Int) :=
-     List.zip (map sum xss) xss
-   help : (Int × List Int) → List (Int × List Int) → List Int
-   | (_, xs), [] => xs
-   | (s, xs), xss => if s > 0 then xs else help (cat (s, xs) xss.head!) xss.tail
-   cat : (Int × List Int) → (Int × List Int) → (Int × List Int)
-   | (s, xs), (t, ys) => (s + t, xs ++ ys)
-
-def collapse₃ (xss : List (List Int)) : List Int :=
-  help (0, id) (labelsum xss) []
-  where
-    labelsum (xss : List (List Int)) : List (Int × List Int) :=
-     List.zip (map sum xss) xss
-    help :
-    let tf := List Int → List Int
-    (Int × tf) → List (Int × List Int) → tf
-    | (_, f), [] => f
-    | (s, f), (as :: bs) =>
-      if s > 0 then f
-      else help (s + as.1, f ∘ (as.2 ++ ·)) bs
-
-/-
-#eval collapse₃ [[1],[-3],[2,4]]
-#eval collapse₃ [[-2,1],[-3],[2,4]]
-#eval collapse₃ [[-2,1],[3],[2,4]]
--/
+-- ## Seciton 1.5 Accumulating and tupling
 
 def fib : Nat → Nat
   | 0     => 1
   | 1     => 1
   | n + 2 => fib (n + 1) + fib n
-
-example : fib 0 = 1 := rfl
-example : fib 1 = 1 := rfl
-example : fib (n + 2) = fib (n + 1) + fib n := rfl
-example : fib 7 = 21 := rfl
 
 def fibFast (n : Nat) : Nat :=
   (loop n).2
@@ -413,6 +381,54 @@ example : fibFast 4 = 5 := by
   unfold fibFast.loop
   unfold fibFast.loop
   rfl
+
+
+partial def collapse₀ (xss : List (List Int)) : List Int :=
+ help [] xss
+ where
+  help : List Int → List (List Int) → List Int
+  | xs, xss =>
+    if xs.sum > 0 ∨ xss.isEmpty then xs
+    else help (xs.append xss.head!) xss.tail
+
+def collapse₁ (xss : List (List Int)) : List Int :=
+ help [] xss
+ where
+  help : List Int → List (List Int) → List Int
+  | xs, [] => xs
+  | xs, (as :: bss) =>
+    if xs.sum > 0 then xs
+    else help (xs.append as) bss
+
+partial def collapse₂ (xss : List (List Int)) : List Int :=
+  help (0, []) (labelsum xss)
+  where
+   labelsum (xss : List (List Int)) : List (Int × List Int) :=
+     List.zip (map List.sum xss) xss
+   help : (Int × List Int) → List (Int × List Int) → List Int
+   | (_, xs), [] => xs
+   | (s, xs), xss => if s > 0 then xs else help (cat (s, xs) xss.head!) xss.tail
+   cat : (Int × List Int) → (Int × List Int) → (Int × List Int)
+   | (s, xs), (t, ys) => (s + t, xs ++ ys)
+
+def collapse₃ (xss : List (List Int)) : List Int :=
+  help (0, id) (labelsum xss) []
+  where
+    labelsum (xss : List (List Int)) : List (Int × List Int) :=
+     List.zip (map List.sum xss) xss
+    help :
+    let tf := List Int → List Int
+    (Int × tf) → List (Int × List Int) → tf
+    | (_, f), [] => f
+    | (s, f), (as :: bs) =>
+      if s > 0 then f
+      else help (s + as.1, f ∘ (as.2 ++ ·)) bs
+
+/-
+#eval collapse₃ [[1],[-3],[2,4]]
+#eval collapse₃ [[-2,1],[-3],[2,4]]
+#eval collapse₃ [[-2,1],[3],[2,4]]
+-/
 
 
 end Chapter1
