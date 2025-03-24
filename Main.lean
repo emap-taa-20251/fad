@@ -1,4 +1,4 @@
 import Fad
 
 def main : IO Unit :=
-  IO.println s!"Hello, {hello}!"
+  IO.println Chapter0.hello₁
