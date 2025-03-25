@@ -3,20 +3,35 @@ namespace Chapter1
 
 -- ## Section 1.1 Basic types and functions
 
-def map : (a → b) → List a → List b
+def map₁ (f : a → b) (xs : List a) : List b :=
+ match xs with
+ | [] => []
+ | (x :: xs) => f x :: map₁ f xs
+
+def map₂ : (a → b) → List a → List b
 | _, [] => []
-| f, (x :: xs) => f x :: map f xs
+| f, (x :: xs) => f x :: map₂ f xs
+
+def map (f : a → b) : List a → List b
+| [] => []
+| (x :: xs) => f x :: map f xs
+
 
 example : map (· * 10) [1,2,3] = [10,20,30] := rfl
-example : map (λ x => x * 10) [1,2,3] = [10,20,30] := rfl
 
 
-def filter {a : Type}  : (a → Bool) → List a → List a
-| _, [] => []
-| p, (x :: xs) => if p x then x :: filter p xs else filter p xs
+def makeInc (n : Nat) : (Nat → Nat) :=
+  fun x => x + n
+
+-- #eval (makeInc 10) 45
+
+def filter {a : Type} (p : a → Bool) : List a → List a
+| [] => []
+| (x :: xs) => if p x then x :: filter p xs else filter p xs
 
 example : filter (· > 5) [1,2,2,4,5,8,6] = [8,6] := rfl
 
+-- #eval filter (λ x => x % 2 ≠ 0) [1,2,3,4,5,6,7,8,9,10]
 
 def foldr {a b : Type} : (a → b → b) → b → List a → b
 | _, e, [] => e
@@ -24,7 +39,7 @@ def foldr {a b : Type} : (a → b → b) → b → List a → b
 
 open List in
 
-example : ∀ xs : List Nat, foldr cons [] xs = xs := by
+example : ∀ xs : List α, foldr cons [] xs = xs := by
   intro xs
   induction xs with
   | nil => unfold foldr; rfl
@@ -86,9 +101,10 @@ def head {α : Type} [Inhabited α] : List α → α :=
   let f (x : α) _ : α := x
   List.foldr f default
 
+/-
 #eval head ['a', 'b', 'c']
 #eval head [1, 2, 3]
-
+-/
 
 def concat₁ {a : Type} : List (List a) → List a :=
  List.foldr List.append []
@@ -179,7 +195,6 @@ def concatMap (f : a → List b) : List a → List b :=
  concat₁ ∘ (List.map f)
 
 -- #eval concatMap (String.toList ·) ["aa", "bb", "cc"]
-
 
 def perm₀ : List a → List (List a)
  | [] => [[]]
