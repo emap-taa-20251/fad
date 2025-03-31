@@ -17,6 +17,7 @@ def map (f : a → b) : List a → List b
 | (x :: xs) => f x :: map f xs
 
 
+-- #eval map (· + 10) [1,2,3]
 example : map (· * 10) [1,2,3] = [10,20,30] := rfl
 
 
@@ -27,7 +28,7 @@ def makeInc (n : Nat) : (Nat → Nat) :=
 
 def filter {a : Type} (p : a → Bool) : List a → List a
 | [] => []
-| (x :: xs) => if p x then x :: filter p xs else filter p xs
+| x :: xs => if p x then x :: filter p xs else filter p xs
 
 example : filter (· > 5) [1,2,2,4,5,8,6] = [8,6] := rfl
 
@@ -37,13 +38,26 @@ def foldr {a b : Type} : (a → b → b) → b → List a → b
 | _, e, [] => e
 | f, e, (x::xs) => f x (foldr f e xs)
 
-open List in
+#eval foldr (λ x y => x + y) 0 [1,2,3]
 
-example : ∀ xs : List α, foldr cons [] xs = xs := by
+example : foldr Nat.add 0 [1,2,3] = 6 := by
+ unfold foldr
+ unfold foldr
+ unfold foldr
+ unfold foldr
+ rw [Nat.add]
+
+
+example : ∀ xs : List α, foldr List.cons [] xs = xs := by
   intro xs
   induction xs with
-  | nil => unfold foldr; rfl
-  | cons a as ih => unfold foldr; rewrite [ih]; rfl
+  | nil =>
+    rewrite [foldr.eq_1]
+    rfl
+  | cons a as ih =>
+    rewrite [foldr]
+    rewrite [ih]
+    rfl
 
 
 def label {α : Type} (xs : List α) : List (Nat × α) :=
@@ -53,8 +67,14 @@ def label {α : Type} (xs : List α) : List (Nat × α) :=
 def length₁ (xs : List a) : Nat :=
   foldr (fun _ y => y + 1) 0 xs
 
-def length₂ : List a → Nat := foldr succ 0
+def length₂ : List a → Nat :=
+  foldr succ 0
   where succ _ n := n + 1
+
+def length₃ : List α → Nat :=
+  let aux (_ : α) (n : Nat) : Nat := n + 1
+  foldr aux 0
+
 
 example : length₂ ["a", "b", "c"] = 3 := by
   unfold length₂
@@ -77,13 +97,9 @@ example : foldr Nat.add 0 [1,2,3] = 6 := by
   rewrite (config := {occs := .pos [1]}) [Nat.add]
   rfl
 
-
-def foldl {a b : Type} : (b → a → b) → b → List a → b
-| _, e, [] => e
-| f, e, (x::xs) => foldl f (f e x) xs
-
-def foldl' {a b : Type} (f : b → a → b) (e : b) : List a → b :=
-  foldr (flip f) e ∘ List.reverse
+def foldl {a b : Type} (f : b → a → b) (e : b) : List a → b
+| []      => e
+| x :: xs => foldl f (f e x) xs
 
 example : foldl Nat.add 0 [1,2,3] = 6 := by
   unfold foldl
@@ -95,15 +111,44 @@ example : foldl Nat.add 0 [1,2,3] = 6 := by
   rewrite (config := {occs := .pos [1]}) [Nat.add]
   rfl
 
+def foldl₀ {a b : Type} (f : b → a → b) (e : b) : List a → b :=
+  foldr (flip f) e ∘ List.reverse
+
+def foldl₁ {a b : Type} (f : b → a → b) (e : b) (xs : List a) : b :=
+  foldr (flip f) e xs.reverse
+
+
+example (f : b → a → b) (e : b) (xs : List a)
+ : foldl f e xs = foldl₀ f e xs := by
+ unfold foldl₀
+ induction xs with
+ | nil =>
+   rw [Function.comp, List.reverse, foldl]
+   simp
+   rw [foldr]
+ | cons y ys ih =>
+   rw [Function.comp, List.reverse]; simp
+   rw [Function.comp] at ih
+   sorry
+
+
 -- ## Section 1.2 Processing lists
 
+structure Point where
+  x : Float
+  y : Float
+deriving Repr
+
+instance : Inhabited Point where
+ default := Point.mk 0 0
+
 def head {α : Type} [Inhabited α] : List α → α :=
-  let f (x : α) _ : α := x
+  let f x _ := x
   List.foldr f default
 
 /-
-#eval head ['a', 'b', 'c']
-#eval head [1, 2, 3]
+#eval head [Point.mk 1 2, Point.mk 3 4]
+#eval head ([] : List Point)
 -/
 
 def concat₁ {a : Type} : List (List a) → List a :=
@@ -180,7 +225,6 @@ def scanr : (a → b → b) → b → List a → List b
 #eval scanr Nat.add 0 [1,2,3,4]
 #eval scanr Nat.add 42 []
 -/
-
 
 -- ## Section 1.3 Inductive and recursive definitions
 
