@@ -228,9 +228,9 @@ def scanr : (a → b → b) → b → List a → List b
 
 -- ## Section 1.3 Inductive and recursive definitions
 
-def inserts {a : Type} : a → List a → List (List a)
-| x, [] => [[x]]
-| x, (y :: ys) => (x :: y :: ys) :: map (y :: ·) (inserts x ys)
+def inserts {a : Type} (x : a) : List a → List (List a)
+| []      => [[x]]
+| y :: ys => (x :: y :: ys) :: map (y :: ·) (inserts x ys)
 
 -- #eval inserts 1 [2,3,4]
 
@@ -238,28 +238,37 @@ def inserts {a : Type} : a → List a → List (List a)
 def concatMap (f : a → List b) : List a → List b :=
  concat₁ ∘ (List.map f)
 
--- #eval concatMap (String.toList ·) ["aa", "bb", "cc"]
+-- #eval concatMap (String.toList ·) ["foo", "bar" ]
 
-def perm₀ : List a → List (List a)
+def perm₁ : List a → List (List a)
  | [] => [[]]
- | (x :: xs) => concatMap (inserts x ·) (perm₀ xs)
+ | (x :: xs) => concatMap (inserts x ·) (perm₁ xs)
 
-def perm₁ : List a → List (List a) := foldr step [[]]
+def perm₁' : List a → List (List a) :=
+ foldr step [[]]
  where
   step x xss := concatMap (inserts x) xss
 
-def perm₁' : List a → List (List a) :=
+def perm₁'' : List a → List (List a) :=
   foldr (concatMap ∘ inserts) [[]]
 
+def perm₁''' (xs : List a) : List (List a) :=
+  foldr step [[]] xs
+ where
+   step a b := concatMap (inserts a) b
+
+-- #eval perm₁ (List.range 5) |>.length
 
 def picks {a : Type} : List a → List (a × List a)
-| [] => []
-| (x :: xs) =>
-   (x, xs) :: ((picks xs).map (λ p => (p.1, x :: p.2)))
+| []      => []
+| x :: xs =>
+  (x, xs) :: ((picks xs).map (λ p => (p.1, x :: p.2)))
+
+-- #eval picks [1,2,3,4]
 
 partial def perm₂ : List a → List (List a)
   | [] => [[]]
-  | xs => concatMap  (λ p => (perm₂ p.2).map (p.1 :: ·)) (picks xs)
+  | xs => concatMap (λ p => (perm₂ p.2).map (p.1 :: ·)) (picks xs)
 
 
 theorem picks_less :
