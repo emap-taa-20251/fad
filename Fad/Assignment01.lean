@@ -35,10 +35,11 @@ def someNonsense : (α → β → γ) → α → (α → γ) → β → γ :=
 /- ## Question 2
 
    Define a structure named RectangularPrism that contains the height, width,
-   and depth of a rectangular prism, each as a Float.  -/
+   and depth of a rectangular prism, each as a Float.
 
 structure RectangularPrism where
  sorry
+-/
 
 
 /- ## Question 3
@@ -60,8 +61,10 @@ structure Point where
   y : Float
 deriving Repr
 
+/-
 structure Segment where
  sorry
+-/
 
 /- ## Question 5
 

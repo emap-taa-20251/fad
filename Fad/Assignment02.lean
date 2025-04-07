@@ -16,8 +16,8 @@ pode-se completar as equações. Apresente as mesmas como `example` abaixo.
 example : map (foldl f e) ∘ inits = ??? := sorry
 
 example : map (foldr f e) ∘ tails = ??? := sorry
--/
 
+-/
 
 /- ## Question L.1: Snoc
 
@@ -31,7 +31,7 @@ def snoc {α : Type} : List α → α → List α :=
 /- Convince yourself that your definition of `snoc` works by
 testing it on a few examples. -/
 
-#eval snoc [1] 2
+-- #eval snoc [1] 2
 -- invoke `#eval` or `#reduce` here
 
 
@@ -43,7 +43,7 @@ in a list. -/
 def sum : List Nat → Nat :=
   sorry
 
-#eval sum [1, 12, 3]   -- expected: 16
+-- #eval sum [1, 12, 3]   -- expected: 16
 
 /- State (without proving them) the following properties of `sum` as theorems.
    Schematically:

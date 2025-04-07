@@ -4,3 +4,6 @@ import Fad.Basic
 import Fad.Chapter0
 import Fad.Chapter1
 import Fad.«Chapter1-Ex»
+
+import Fad.Assignment01
+import Fad.Assignment02
