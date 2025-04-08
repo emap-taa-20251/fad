@@ -266,51 +266,42 @@ def picks {a : Type} : List a → List (a × List a)
 
 -- #eval picks [1,2,3,4]
 
-partial def perm₂ : List a → List (List a)
-  | [] => [[]]
-  | xs => concatMap (λ p => (perm₂ p.2).map (p.1 :: ·)) (picks xs)
-
-
-theorem picks_less :
-  p ∈ picks xs → p.2.length < xs.length := by
+theorem picks_less {a : Type} (xs : List a) :
+  ∀ (p : a × List a), p ∈ picks xs → p.2.length < xs.length := by
+  intro p h
   induction xs with
   | nil =>
-    unfold picks
-    intro h
-    simp at h
+    cases h -- no elements in picks []
   | cons x xs ih =>
-    intro h
-    unfold picks at h
-    simp at h
+    rw [picks] at h
     cases h with
-    | inl h =>
-      rw [h]
-      simp
-    | inr h =>
-      simp; rw [Nat.lt_succ_iff, Nat.le_iff_lt_or_eq]; left; apply ih
-      apply Exists.elim h; intro q hq; sorry
+    | head => simp
+    | tail ys h1 =>
+      simp at h1
+      done
 
-theorem perm_aux {a : Type}
-  (v : a) (l : List a)
-  (p : a × List a) (h : p ∈ picks (v :: l)) :
-  p.2.length < (v :: l).length := by
-  induction l with
-  | nil =>
-     unfold picks at h
-     rw [picks.eq_1] at h
-     rw [List.map.eq_1] at h
-     simp; simp at h; rw [h]; done
-  | cons x xs ih => sorry
 
-def perm : List a → List (List a)
+
+
+
+
+partial def perm₂ : List a → List (List a)
   | [] => [[]]
-  | x :: xs => concatMap (fun ⟨p, hp⟩ ↦
-      have : p.2.length < (x :: xs).length := perm_aux x xs p hp
-      (perm p.2).map (p.1 :: ·))
+  | xs =>
+    let subperms p := (perm₂ p.2).map (p.1 :: ·)
+    concatMap subperms (picks xs)
+
+
+def perm₃ : List a → List (List a)
+  | [] => [[]]
+  | x :: xs => concatMap (λ ⟨p, hp⟩ ↦
+      have : p.2.length < (x :: xs).length := by
+       apply picks_less (x :: xs)
+       exact hp
+      (perm₃ p.2).map (p.1 :: ·))
       (picks (x :: xs)).attach
  termination_by xs => xs.length
 
--- #eval perm [1,2,3]
 
 
 partial def until' (p: a → Bool) (f: a → a) (x : a) : a :=
