@@ -191,8 +191,8 @@ example (f : α → β → α) : map (foldl f e) ∘ inits = scanl f e := by
   rw [scanl]
   rw [map]
   simp [foldl]
-  rw [←map_equal]
-  rw [←map_compose]
+  rw [← map_equal]
+  rw [← map_compose]
   rw [foldl_comp]
   have h : map (foldl f (f e y)) (inits ys) = (map (foldl f (f e y)) ∘ inits) ys := by rfl
   rw [h]

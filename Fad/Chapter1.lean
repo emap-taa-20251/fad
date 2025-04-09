@@ -311,7 +311,6 @@ partial def while' (p : a → Bool) := until' (not ∘ p)
 
 -- ## Section 1.4 Fusion
 
-
 def inits {a : Type} : List a → List (List a)
 | [] => [[]]
 | (x :: xs) => [] :: (inits xs).map (fun ys => x :: ys)
@@ -321,16 +320,16 @@ def tails {a : Type} : List a → List (List a)
 | (x :: xs) => (x :: xs) :: tails xs
 
 theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
-foldl f e ∘ (fun x => y :: x) = foldl f (f e y) := by rfl
+ List.foldl f e ∘ (fun x => y :: x) = List.foldl f (f e y) := by rfl
 
-theorem map_map {α : Type} (g : α -> α ) : List.map g = map g := by
+theorem map_map {α : Type} (g : α -> α ) : List.map g = List.map g := by
   funext as
   induction as with
   | nil => rfl
   | cons a as ih =>
-    rw [map,List.map]
-    rw [ih]
+    rw [List.map]
     done
+
 
 theorem map_compose {α β γ : Type} (f : β → γ) (g : α → β) :
   List.map f ∘ List.map g = List.map (f ∘ g) := by
@@ -341,17 +340,16 @@ theorem map_compose {α β γ : Type} (f : β → γ) (g : α → β) :
 
 
 example {a b : Type} (f : b → a → b) (e : b) :
-   map (foldl f e) ∘ inits = scanl f e := by
+  List.map (List.foldl f e) ∘ inits = scanl f e := by
   funext xs
   induction xs generalizing e with
   | nil => simp [map, inits, foldl, scanl]
   | cons x xs ih =>
-    rw [Function.comp]
-    rw [inits,map,foldl,map_map,← map_compose]
-    rw [foldl_comp,scanl]
-    have hx := ih (f e x)
-    rw [← hx]
+    rw [Function.comp, inits, map_map]; simp
+    rw [foldl_comp, scanl]
+    rw [← ih (f e x)]
     simp
+
 
 example {a b c : Type} (f : b → c) (g : a → b) : map f ∘ map g = map (f ∘ g) := by
   funext xs
