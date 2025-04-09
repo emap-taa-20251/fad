@@ -278,11 +278,7 @@ theorem picks_less {a : Type} (xs : List a) :
     | head => simp
     | tail ys h1 =>
       simp at h1
-      done
-
-
-
-
+      sorry
 
 
 partial def perm₂ : List a → List (List a)
@@ -327,20 +323,22 @@ def tails {a : Type} : List a → List (List a)
 theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
 foldl f e ∘ (fun x => y :: x) = foldl f (f e y) := by rfl
 
-theorem map_map {α : Type} (g : α -> α ) (a : List α): List.map g a = map g a := by
-  induction a with
+theorem map_map {α : Type} (g : α -> α ) : List.map g = map g := by
+  funext as
+  induction as with
   | nil => rfl
   | cons a as ih =>
     rw [map,List.map]
     rw [ih]
     done
 
-theorem map_compose {α β γ : Type} (f : β → γ) (g : α → β) (l : List α) :
-  map (f ∘ g) l = map f (map g l) := by
-  induction l with
+theorem map_compose {α β γ : Type} (f : β → γ) (g : α → β) :
+  List.map f ∘ List.map g = List.map (f ∘ g) := by
+  funext as
+  induction as with
   | nil => rfl
-  | cons x xs ih =>
-  simp [map, ih]
+  | cons x xs ih => simp [List.map, ih]
+
 
 example {a b : Type} (f : b → a → b) (e : b) :
    map (foldl f e) ∘ inits = scanl f e := by
