@@ -315,7 +315,8 @@ theorem map_map {α β γ : Type} (f : β → γ) (g : α → β) :
   funext as
   induction as with
   | nil => rfl
-  | cons x xs ih => simp [List.map, ih]
+  | cons x xs ih =>
+    simp [List.map, ih]
 
 
 theorem concatMap_map {α β : Type} (f : α → List β) (g : β → α) :
@@ -335,40 +336,40 @@ theorem foldr_map {α β : Type} (f : α → β → β) (e : β) (g : β → α)
     simp [List.map, List.foldr]
     rw [← ih]
     rw [Function.comp]
-    done
+
+
+theorem foldr_fusion {a b c : Type}
+ (f : a → c → c) (e : c) (xs : List a)
+ (g : a → b → b) (h : c → b)
+ (h₁ : ∀ x y, h (f x y) = g x (h y))
+ : h (List.foldr f e xs) = List.foldr g (h e) xs := by
+ induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+    rewrite [List.foldr]
+    rewrite [h₁ x (List.foldr f e xs)]
+    rewrite [ih]
+    rfl
 
 
 example : ∀ xs : List a, [] ++ xs = xs := by
  intro h1
  induction h1 with
  | nil => rfl
- | cons ha hs => simp [List.append]; done
+ | cons ha hs => simp [List.append]
 
 
-theorem foldr_append (xs ys : List a) (f : a → b → b) (e : b)
- : List.foldr f e (xs ++ ys) = List.foldr f (List.foldr f e ys) xs := by
+example (xs ys : List a) (f : a → b → b) (e : b)
+ : List.foldr f e (xs ++ ys) = List.foldr f (List.foldr f e ys) xs
+ := by
  induction xs with
- | nil => rw [List.foldr]; rfl
- | cons x xs ih => simp [List.append, List.foldr]
+ | nil => rfl
+ | cons x xs ih => simp
 
 
-theorem foldr_fusion
- (g : a → b → b) (h : a → b)
- (h₁ : ∀ x y, h (f x y) = g x (h y))
- : h (List.foldr f e xs) = List.foldr g (h e) xs := by
- induction xs with
-  | nil =>
-    rw [List.foldr]
-    rfl
-  | cons x xs ih =>
-    rewrite [List.foldr]
-    rewrite [h₁ x (List.foldr f e xs)]
-    rewrite [ih]
-    rewrite [List.foldr]
-    rfl
-
-example (f : a → a → a)
- : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e := by
+example (f : a → b → b)
+ : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
+ := by
  funext xs
  induction xs with
  | nil =>
@@ -382,8 +383,9 @@ example (f : a → a → a)
    rw [← ih]
    rw [Function.comp]
 
-example (f : a → a → a)
- : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e := by
+example (f : a → b → b)
+ : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
+ := by
  funext xs
  let g := flip (List.foldr f)
  let h := List.foldr f e
@@ -404,6 +406,60 @@ theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
 
 
 -- ## Seciton 1.5 Accumulating and tupling
+
+partial def collapse₀ (xss : List (List Int)) : List Int :=
+ help [] xss
+ where
+  help : List Int → List (List Int) → List Int
+  | xs, xss =>
+    if xs.sum > 0 ∨ xss.isEmpty then xs
+    else help (xs.append xss.head!) xss.tail
+
+def collapse₁ (xss : List (List Int)) : List Int :=
+ help [] xss
+ where
+  help : List Int → List (List Int) → List Int
+  | xs, [] => xs
+  | xs, (as :: bss) =>
+    if xs.sum > 0 then xs
+    else help (xs.append as) bss
+
+def collapse₂ (xss : List (List Int)) : List Int :=
+  help (0, []) (labelsum xss)
+  where
+   labelsum (xss : List (List Int)) : List (Int × List Int) :=
+     List.zip (map List.sum xss) xss
+   help : (Int × List Int) → List (Int × List Int) → List Int
+   | (_, xs), [] => xs
+   | (s, xs), as :: bss =>
+     if s > 0
+     then xs
+     else help (cat (s, xs) as) bss
+   cat a b := (a.1 + b.1, a.2 ++ b.2)
+
+
+def collapse₃ (xss : List (List Int)) : List Int :=
+  let labelsum (xss : List (List Int)) :=
+    List.zip (map List.sum xss) xss
+  let tf := List Int → List Int
+  let rec help : (Int × tf) → List (Int × List Int) → tf
+    | (_, f), [] => f
+    | (s, f), (as :: bs) =>
+      if s > 0 then f
+      else help (s + as.1, f ∘ (as.2 ++ ·)) bs
+  help (0, id) (labelsum xss) []
+
+
+/-
+#eval collapse₃ [[1],[-3],[2,4]]
+#eval collapse₃ [[-2,1],[-3],[2,4]]
+#eval collapse₃ [[-2,1],[3],[2,4]]
+-/
+
+example : collapse₃ [[-2,1],[3],[2,4]] = [-2, 1, 3] := by
+  unfold collapse₃
+  sorry
+
 
 def fib : Nat → Nat
   | 0     => 1
@@ -431,54 +487,6 @@ example : fibFast 4 = 5 := by
   unfold fibFast.loop
   unfold fibFast.loop
   rfl
-
-
-partial def collapse₀ (xss : List (List Int)) : List Int :=
- help [] xss
- where
-  help : List Int → List (List Int) → List Int
-  | xs, xss =>
-    if xs.sum > 0 ∨ xss.isEmpty then xs
-    else help (xs.append xss.head!) xss.tail
-
-def collapse₁ (xss : List (List Int)) : List Int :=
- help [] xss
- where
-  help : List Int → List (List Int) → List Int
-  | xs, [] => xs
-  | xs, (as :: bss) =>
-    if xs.sum > 0 then xs
-    else help (xs.append as) bss
-
-partial def collapse₂ (xss : List (List Int)) : List Int :=
-  help (0, []) (labelsum xss)
-  where
-   labelsum (xss : List (List Int)) : List (Int × List Int) :=
-     List.zip (map List.sum xss) xss
-   help : (Int × List Int) → List (Int × List Int) → List Int
-   | (_, xs), [] => xs
-   | (s, xs), xss => if s > 0 then xs else help (cat (s, xs) xss.head!) xss.tail
-   cat : (Int × List Int) → (Int × List Int) → (Int × List Int)
-   | (s, xs), (t, ys) => (s + t, xs ++ ys)
-
-def collapse₃ (xss : List (List Int)) : List Int :=
-  help (0, id) (labelsum xss) []
-  where
-    labelsum (xss : List (List Int)) : List (Int × List Int) :=
-     List.zip (map List.sum xss) xss
-    help :
-    let tf := List Int → List Int
-    (Int × tf) → List (Int × List Int) → tf
-    | (_, f), [] => f
-    | (s, f), (as :: bs) =>
-      if s > 0 then f
-      else help (s + as.1, f ∘ (as.2 ++ ·)) bs
-
-/-
-#eval collapse₃ [[1],[-3],[2,4]]
-#eval collapse₃ [[-2,1],[-3],[2,4]]
-#eval collapse₃ [[-2,1],[3],[2,4]]
--/
 
 
 end Chapter1
