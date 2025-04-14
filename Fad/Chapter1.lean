@@ -123,8 +123,7 @@ example (f : b → a → b) (e : b) (xs : List a)
  unfold foldl₀
  induction xs with
  | nil =>
-   rw [Function.comp, List.reverse, foldl]
-   simp
+   rw [Function.comp, List.reverse, foldl]; simp
    rw [foldr]
  | cons y ys ih =>
    rw [Function.comp, List.reverse]; simp
@@ -292,8 +291,8 @@ def perm₃ : List a → List (List a)
   | [] => [[]]
   | x :: xs => concatMap (λ ⟨p, hp⟩ ↦
       have : p.2.length < (x :: xs).length := by
-       apply picks_less (x :: xs)
-       exact hp
+        apply picks_less (x :: xs)
+        exact hp
       (perm₃ p.2).map (p.1 :: ·))
       (picks (x :: xs)).attach
  termination_by xs => xs.length
@@ -311,6 +310,86 @@ partial def while' (p : a → Bool) := until' (not ∘ p)
 
 -- ## Section 1.4 Fusion
 
+theorem map_map {α β γ : Type} (f : β → γ) (g : α → β) :
+  List.map f ∘ List.map g = List.map (f ∘ g) := by
+  funext as
+  induction as with
+  | nil => rfl
+  | cons x xs ih => simp [List.map, ih]
+
+
+theorem concatMap_map {α β : Type} (f : α → List β) (g : β → α) :
+  concatMap f ∘ List.map g = concatMap (f ∘ g) := by
+  funext as
+  induction as with
+  | nil => rfl
+  | cons x xs ih => simp [concatMap, ih]
+
+
+theorem foldr_map {α β : Type} (f : α → β → β) (e : β) (g : β → α) :
+  List.foldr f e ∘ List.map g = List.foldr (f ∘ g) e := by
+  funext as
+  induction as with
+  | nil => rfl
+  | cons x xs ih =>
+    simp [List.map, List.foldr]
+    rw [← ih]
+    rw [Function.comp]
+    done
+
+
+example : ∀ xs : List a, [] ++ xs = xs := by
+ intro h1
+ induction h1 with
+ | nil => rfl
+ | cons ha hs => simp [List.append]; done
+
+
+theorem foldr_append (xs ys : List a) (f : a → b → b) (e : b)
+ : List.foldr f e (xs ++ ys) = List.foldr f (List.foldr f e ys) xs := by
+ induction xs with
+ | nil => rw [List.foldr]; rfl
+ | cons x xs ih => simp [List.append, List.foldr]
+
+
+theorem foldr_fusion
+ (g : a → b → b) (h : a → b)
+ (h₁ : ∀ x y, h (f x y) = g x (h y))
+ : h (List.foldr f e xs) = List.foldr g (h e) xs := by
+ induction xs with
+  | nil =>
+    rw [List.foldr]
+    rfl
+  | cons x xs ih =>
+    rewrite [List.foldr]
+    rewrite [h₁ x (List.foldr f e xs)]
+    rewrite [ih]
+    rewrite [List.foldr]
+    rfl
+
+example (f : a → a → a)
+ : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e := by
+ funext xs
+ induction xs with
+ | nil =>
+   rw [List.foldr, Function.comp]
+   simp [concat₁]
+ | cons y ys ih =>
+   rw [Function.comp]
+   simp [concat₁]
+   rw [←concat₁]
+   rw [flip]
+   rw [← ih]
+   rw [Function.comp]
+
+example (f : a → a → a)
+ : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e := by
+ funext xs
+ let g := flip (List.foldr f)
+ let h := List.foldr f e
+ sorry
+
+
 def inits {a : Type} : List a → List (List a)
 | [] => [[]]
 | (x :: xs) => [] :: (inits xs).map (fun ys => x :: ys)
@@ -322,90 +401,6 @@ def tails {a : Type} : List a → List (List a)
 theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
  List.foldl f e ∘ (fun x => y :: x) = List.foldl f (f e y) := by rfl
 
-theorem map_map {α : Type} (g : α -> α ) : List.map g = List.map g := by
-  funext as
-  induction as with
-  | nil => rfl
-  | cons a as ih =>
-    rw [List.map]
-    done
-
-
-theorem map_compose {α β γ : Type} (f : β → γ) (g : α → β) :
-  List.map f ∘ List.map g = List.map (f ∘ g) := by
-  funext as
-  induction as with
-  | nil => rfl
-  | cons x xs ih => simp [List.map, ih]
-
-
-example {a b : Type} (f : b → a → b) (e : b) :
-  List.map (List.foldl f e) ∘ inits = scanl f e := by
-  funext xs
-  induction xs generalizing e with
-  | nil => simp [map, inits, foldl, scanl]
-  | cons x xs ih =>
-    rw [Function.comp, inits, map_map]; simp
-    rw [foldl_comp, scanl]
-    rw [← ih (f e x)]
-    simp
-
-
-example {a b c : Type} (f : b → c) (g : a → b) : map f ∘ map g = map (f ∘ g) := by
-  funext xs
-  induction xs with
-  | nil => rfl
-  | cons x xs ih => simp [Function.comp, map]; rw [← ih]; rfl
-
-theorem append_left_nil : ∀ xs : List a, [] ++ xs = xs := by
- intro h1
- induction h1 with
- | nil => rfl
- | cons ha hs => simp [List.append]; done
-
-example (xs ys : List a) (f : a → b → b) (e : b)
- : foldr f e (xs ++ ys) = foldr f (foldr f e ys) xs := by
-  have h1 := append_left_nil ys
-  induction xs with
-  | nil => rw [foldr.eq_1]; rewrite [h1]; rfl
-  | cons x xs ih => simp [List.append, foldr]; rw [ih]
-
-theorem foldr_append {α β : Type} (f : α → β → β) (e : β) (xs ys : List α) :
-  foldr f e (xs ++ ys) = foldr f (foldr f e ys) xs := by
-  induction xs with
-  |nil => rfl
-  |cons x xs ih =>
-    simp [foldr, ih]
-
-example (f : a → a → a)
- : foldr f e ∘ concat₁ = foldr (flip (foldr f)) e := by
-  funext xs
-  induction xs with
-  | nil =>
-    rw [foldr.eq_1, Function.comp]
-    simp [concat₁, foldr.eq_1]
-  | cons y ys ih =>
-    rw [Function.comp]
-    simp [concat₁]
-    rw [←concat₁]
-    rw [foldr_append]
-    rw [foldr]
-    rw [flip]
-    exact congrArg (λ x => foldr f x y) ih
-
-theorem fusion_th (g : a → b → b) (h : a → b) (h₁ : ∀ x y, h (f x y) = g x (h y))
- : h (foldr f e xs) = foldr g (h e) xs := by
- induction xs with
-  | nil =>
-    rewrite [foldr.eq_1]
-    rewrite [foldr.eq_1]
-    rfl
-  | cons x xs ih =>
-    rewrite [foldr]
-    rewrite [h₁ x (foldr f e xs)]
-    rewrite [ih]
-    rewrite [foldr]
-    rfl
 
 
 -- ## Seciton 1.5 Accumulating and tupling

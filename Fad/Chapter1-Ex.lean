@@ -170,8 +170,6 @@ def dropWhileEnd {α : Type} (p : α → Bool) (xs : List α) : List α :=
  let op x xs := if p x ∧ xs.isEmpty then [] else x :: xs
  xs.foldr op []
 
-
-
 theorem map_equal (a : List α) (f : α → β): map f a = List.map f a := by
 induction a with
 | nil => rfl
@@ -219,6 +217,20 @@ def fraction : List Nat → Float :=
   List.foldr shiftr 0
   where
   shiftr (d : Nat) (n : Float) : Float := (d.toFloat + n)/10
+
+/- # Exercicio 1.12 -/
+
+example {a b : Type} (f : b → a → b) (e : b) :
+  List.map (List.foldl f e) ∘ inits = scanl f e := by
+  funext xs
+  induction xs generalizing e with
+  | nil => simp [map, inits, foldl, scanl]
+  | cons x xs ih =>
+    rw [Function.comp, inits, map_map]; simp
+    rw [foldl_comp, scanl]
+    rw [← ih (f e x)]
+    simp
+
 
 /- # Exercicio 1.13 -/
 
