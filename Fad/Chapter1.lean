@@ -407,13 +407,30 @@ theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
 
 -- ## Seciton 1.5 Accumulating and tupling
 
-partial def collapse₀ (xss : List (List Int)) : List Int :=
- help [] xss
- where
+def collapse₀ (xss : List (List Int)) : List Int :=
+  help [] xss
+where
   help : List Int → List (List Int) → List Int
-  | xs, xss =>
-    if xs.sum > 0 ∨ xss.isEmpty then xs
-    else help (xs.append xss.head!) xss.tail
+    | xs, xss =>
+      if h : xs.sum > 0 ∨ xss.isEmpty then
+        xs
+      else
+        have xss_not_null : xss ≠ [] := by
+          simp at h
+          intro contra
+          exact h.right contra
+
+        have term : xss.length - 1 < xss.length := by
+          cases xss with
+          | nil       => contradiction
+          | cons _ _  => simp
+
+        help (xs.append (xss.head xss_not_null)) xss.tail
+
+  termination_by _ xss => xss.length
+
+#eval collapse₀ [[-5], [-1], [1, 3, 2], [2], [4]]
+
 
 def collapse₁ (xss : List (List Int)) : List Int :=
  help [] xss
