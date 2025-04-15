@@ -338,18 +338,7 @@ theorem foldr_map {α β : Type} (f : α → β → β) (e : β) (g : β → α)
     rw [Function.comp]
 
 
-theorem foldr_fusion {a b c : Type}
- (f : a → c → c) (e : c) (xs : List a)
- (g : a → b → b) (h : c → b)
- (h₁ : ∀ x y, h (f x y) = g x (h y))
- : h (List.foldr f e xs) = List.foldr g (h e) xs := by
- induction xs with
-  | nil => rfl
-  | cons x xs ih =>
-    rewrite [List.foldr]
-    rewrite [h₁ x (List.foldr f e xs)]
-    rewrite [ih]
-    rfl
+
 
 
 example : ∀ xs : List a, [] ++ xs = xs := by
@@ -383,13 +372,34 @@ example (f : a → b → b)
    rw [← ih]
    rw [Function.comp]
 
-example (f : a → b → b)
- : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
- := by
- funext xs
- let g := flip (List.foldr f)
- let h := List.foldr f e
- sorry
+
+theorem foldr_fusion {a b c : Type}
+ (f : a → c → c) (e : c) (xs : List a)
+ (g : a → b → b) (h : c → b)
+ (h₁ : ∀ x y, h (f x y) = g x (h y))
+ : h (List.foldr f e xs) = List.foldr g (h e) xs := by
+ induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+    rewrite [List.foldr]
+    rewrite [h₁ x (List.foldr f e xs)]
+    rewrite [ih]
+    rfl
+
+
+example {a c : Type} (f : a → c → c) (e : c) :
+  List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
+   := by
+  funext xs
+  let f₁ : List a → List a → List a := (· ++ ·)
+  let e₁ : List a := []
+  let g : List a → c → c := flip (List.foldr f)
+  let h : List a → c := List.foldr f e
+  rw [Function.comp_apply]
+  rw [concat₁]
+  apply foldr_fusion f₁ e₁ xs g h
+  intro x y
+  exact List.foldr_append f e x y
 
 
 def inits {a : Type} : List a → List (List a)
