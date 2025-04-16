@@ -4,6 +4,38 @@ import Fad.«Chapter1-Ex»
 namespace Chapter2
 open Chapter1 (dropWhile)
 
+-- # 2.0 Complexity
+
+def fib : Nat → Nat
+  | 0     => 1
+  | 1     => 1
+  | n + 2 => fib (n + 1) + fib n
+
+def fibFast (n : Nat) : Nat :=
+  (loop n).2
+where
+  loop : Nat → Nat × Nat
+  | 0   => (0, 1)
+  | n+1 => let p := loop n; (p.2, p.1 + p.2)
+
+/-
+#eval fibFast 100
+#reduce fib 100 -- try eval
+#print fib
+-/
+
+example : fibFast 4 = 5 := by
+  unfold fibFast
+  unfold fibFast.loop
+  unfold fibFast.loop
+  unfold fibFast.loop
+  unfold fibFast.loop
+  unfold fibFast.loop
+  rfl
+
+
+-- # 2.2 Estimating running times
+
 /-
 #eval List.append [1,2,3] [4,5,6]
 #eval List.head! (List.iota 1000)
@@ -22,7 +54,7 @@ def concat₁ (xss : List (List a)) : List a :=
 -- #eval concat₁ [[1, 2], [3, 4], [5, 6]]
 
 
--- 2.4 Amortised running times
+-- # 2.4 Amortised running times
 
 def build (p : a → a → Bool) : List a → List a :=
  List.foldr insert []

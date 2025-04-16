@@ -492,35 +492,8 @@ def collapse₃ (xss : List (List Int)) : List Int :=
 
 example : collapse₃ [[-2,1],[3],[2,4]] = [-2, 1, 3] := by
   unfold collapse₃
+  simp [List.map, List.sum, List.foldr]
   sorry
-
-
-def fib : Nat → Nat
-  | 0     => 1
-  | 1     => 1
-  | n + 2 => fib (n + 1) + fib n
-
-def fibFast (n : Nat) : Nat :=
-  (loop n).2
-where
-  loop : Nat → Nat × Nat
-  | 0   => (0, 1)
-  | n+1 => let p := loop n; (p.2, p.1 + p.2)
-
-/-
-#eval fibFast 100
-#reduce fib 100 -- try eval
-#print fib
--/
-
-example : fibFast 4 = 5 := by
-  unfold fibFast
-  unfold fibFast.loop
-  unfold fibFast.loop
-  unfold fibFast.loop
-  unfold fibFast.loop
-  unfold fibFast.loop
-  rfl
 
 
 end Chapter1
