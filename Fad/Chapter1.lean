@@ -361,14 +361,14 @@ theorem foldr_fusion {a b c : Type}
     rfl
 
 
-example : ∀ xs : List a, [] ++ xs = xs := by
+example {a : Type} : ∀ xs : List a, [] ++ xs = xs := by
  intro h1
  induction h1 with
  | nil => rfl
  | cons ha hs => simp [List.append]
 
 
-example (xs ys : List a) (f : a → b → b) (e : b)
+example {a b : Type} (xs ys : List a) (f : a → b → b) (e : b)
  : List.foldr f e (xs ++ ys) = List.foldr f (List.foldr f e ys) xs
  := by
  induction xs with
@@ -376,7 +376,12 @@ example (xs ys : List a) (f : a → b → b) (e : b)
  | cons x xs ih => simp
 
 
-example (f : a → b → b)
+example {a b : Type} (xs ys : List a) (f : a → b → b) (e : b)
+ : List.foldr f e (xs ++ ys) = List.foldr f (List.foldr f e ys) xs
+ := by sorry
+
+
+example {a b : Type} (f : a → b → b) (e : b)
  : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
  := by
  funext xs
@@ -393,20 +398,19 @@ example (f : a → b → b)
    rw [Function.comp]
 
 
-example {a c : Type} (f : a → c → c) (e : c) :
-  List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
-   := by
-  funext xs
-  let f₁ : List a → List a → List a := (· ++ ·)
+example {a b : Type} (f : a → b → b) (e : b)
+  : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
+  := by
+  funext xss
+  let f₁ := List.append (α := a)
   let e₁ : List a := []
-  let g : List a → c → c := flip (List.foldr f)
-  let h : List a → c := List.foldr f e
-  rw [Function.comp_apply]
+  let g : List a → b → b := flip (List.foldr f)
+  let h : List a → b := List.foldr f e
+  rw [Function.comp]
   rw [concat₁]
-  apply foldr_fusion f₁ e₁ xs g h
-  intro x y
-  sorry
-  -- exact List.foldr_append f e x y
+  apply foldr_fusion f₁ e₁ xss g h
+  intro xs ys
+  simp [f₁, h, g, flip]
 
 
 def inits {a : Type} : List a → List (List a)
@@ -424,13 +428,26 @@ theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
 
 -- ## Seciton 1.5 Accumulating and tupling
 
-partial def collapse₀ (xss : List (List Int)) : List Int :=
+def collapse₀ (xss : List (List Int)) : List Int :=
  help [] xss
  where
-  help : List Int → List (List Int) → List Int
-  | xs, xss =>
-    if xs.sum > 0 ∨ xss.isEmpty then xs
-    else help (xs.append xss.head!) xss.tail
+  help (xs : List Int) (xss : List (List Int)) : List Int :=
+    if h : xs.sum > 0 ∨ xss.isEmpty
+    then xs
+    else
+      have h₁ : xss ≠ [] := by
+       simp at h
+       intro contra
+       exact h.right contra
+
+      have : xss.length - 1 < xss.length := by
+       cases xss with
+       | nil       => contradiction
+       | cons _ _  => simp
+
+      help (xs.append $ xss.head h₁) xss.tail
+  termination_by xss.length
+
 
 def collapse₁ (xss : List (List Int)) : List Int :=
  help [] xss
