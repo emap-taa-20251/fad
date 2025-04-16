@@ -140,7 +140,7 @@ def test₁ := (@Subtype.mk _ p [1,2,3] (by simp [p]))
 def test₂ := (Subtype.mk [1,2,3] (by rfl : p [1,2,3]) )
 
 def splitInTwoSL (xs : List a) : SymList a :=
-  let p := List.splitInTwo (Subtype.mk xs (by rfl))
+  let p := List.MergeSort.Internal.splitInTwo (Subtype.mk xs (by rfl))
   SymList.mk p.1 p.2.val.reverse (by
     have ⟨⟨as, aok⟩, ⟨bs, bok⟩⟩ := p
     simp [aok, bok]
@@ -158,7 +158,7 @@ def tailSL {a : Type} (as : SymList a) : SymList a :=
     else
       if h2 : xs.length = 1 then splitInTwoSL ys.reverse
       else (SymList.mk xs.tail ys (by
-        simp [← not_congr List.length_eq_zero] at h
+        simp [← not_congr List.length_eq_zero_iff] at h
         apply And.intro <;> (intro h3; have k :: (l :: ms) := xs)
         repeat simp [ok] at *))
 
@@ -171,7 +171,7 @@ def initSL {a : Type} : (sl : SymList a) → SymList a
   else
     if h2 : ys.length = 1 then splitInTwoSL xs
     else (SymList.mk xs ys.tail (by
-      simp [← not_congr List.length_eq_zero] at h
+      simp [← not_congr List.length_eq_zero_iff] at h
       apply And.intro
       all_goals
        intro h3
@@ -220,13 +220,13 @@ theorem length_init_lt_length (sl : SymList a) (h : sl ≠ nilSL)
   have := h hl
   contradiction
   simp [nilSL]
-  simp [<-List.length_eq_zero] at hl
+  simp [<-List.length_eq_zero_iff] at hl
   omega
   by_cases hr2: rsl.length = 1 <;> simp [hr2]
   rw [<-lengthSL]
   simp [length_sl_eq_length]
   refine @Nat.sub_one_lt_of_lt rsl.length 0 (by
-    simp [<-List.length_eq_zero] at hr
+    simp [<-List.length_eq_zero_iff] at hr
     omega
   )
 

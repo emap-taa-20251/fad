@@ -170,41 +170,6 @@ def dropWhileEnd {α : Type} (p : α → Bool) (xs : List α) : List α :=
  let op x xs := if p x ∧ xs.isEmpty then [] else x :: xs
  xs.foldr op []
 
-theorem map_equal (a : List α) (f : α → β): map f a = List.map f a := by
-induction a with
-| nil => rfl
-| cons a as ih =>
-  simp
-  rw [map]
-  exact congrArg (List.cons (f a)) ih
-
-
-example (f : α → β → α) : map (foldl f e) ∘ inits = scanl f e := by
-  funext xs
-  induction xs generalizing e with
-  | nil => exact rfl
-  | cons y ys ih =>
-  rw [Function.comp]
-  rw [inits]
-  rw [scanl]
-  rw [map]
-  simp [foldl]
-  rw [← map_equal]
-  rw [← map_compose]
-  rw [foldl_comp]
-  have h : map (foldl f (f e y)) (inits ys) = (map (foldl f (f e y)) ∘ inits) ys := by rfl
-  rw [h]
-  exact ih
-
-example (f : α → β → β) : map (foldr f e) ∘ tails = scanr f e := by
-  funext xs
-  induction xs with
-  | nil =>
-    simp [Function.comp]
-    simp [tails,map,scanr,foldr]
-  | cons y ys ih =>
-    sorry
-
 
 /- # Exercicio 1.11 -/
 
@@ -218,6 +183,7 @@ def fraction : List Nat → Float :=
   where
   shiftr (d : Nat) (n : Float) : Float := (d.toFloat + n)/10
 
+
 /- # Exercicio 1.12 -/
 
 example {a b : Type} (f : b → a → b) (e : b) :
@@ -226,10 +192,23 @@ example {a b : Type} (f : b → a → b) (e : b) :
   induction xs generalizing e with
   | nil => simp [map, inits, foldl, scanl]
   | cons x xs ih =>
-    rw [Function.comp, inits, map_map]; simp
+    rw [Function.comp, inits]; simp
     rw [foldl_comp, scanl]
     rw [← ih (f e x)]
     simp
+
+example {α β : Type} (f : α → β → β) (e : β) :
+  List.map (List.foldr f e) ∘ tails = scanr f e := by
+  funext xs
+  induction xs generalizing e with
+  | nil =>
+    simp [Function.comp]
+    simp [tails, map, scanr, List.foldr]
+  | cons y ys ih =>
+    rw [Function.comp, tails]; simp
+    simp [scanr]
+    sorry
+
 
 
 /- # Exercicio 1.13 -/

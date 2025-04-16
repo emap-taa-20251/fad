@@ -8,3 +8,7 @@ name = "Fad"
 [[lean_exe]]
 name = "fad"
 root = "Main"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"

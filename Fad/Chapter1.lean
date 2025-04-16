@@ -16,9 +16,18 @@ def map (f : a → b) : List a → List b
 | [] => []
 | (x :: xs) => f x :: map f xs
 
-
 -- #eval map (· + 10) [1,2,3]
+
 example : map (· * 10) [1,2,3] = [10,20,30] := rfl
+
+
+theorem map_equal (a : List α) (f : α → β): map f a = List.map f a := by
+ induction a with
+ | nil => rfl
+ | cons a as ih =>
+   simp [List.map, map]
+   rw [ih]
+
 
 
 def makeInc (n : Nat) : (Nat → Nat) :=

@@ -69,7 +69,7 @@ def perms₁ {α : Type} : List α → List (List α)
 | []  => [[]]
 | [x] => [[x]]
 | xs  =>
-  let p := List.splitInTwo (Subtype.mk xs rfl)
+  let p := List.MergeSort.Internal.splitInTwo (Subtype.mk xs rfl)
   let yss := perms p.1
   let zss := perms p.2
   Chapter1.concatMap (Function.uncurry interleave) (cp yss zss)
@@ -123,8 +123,8 @@ def mkchange' (ds : List Denom) : Nat → Tuple :=
 
 end S73
 
-/- # Exercicio 7.16 
-   not clear how to prove formally 
+/- # Exercicio 7.16
+   not clear how to prove formally
 -/
 
 namespace S73

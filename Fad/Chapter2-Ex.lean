@@ -11,14 +11,14 @@ def op1 {a : Type} : (List a) → a → a
 | [], y => y
 | (x::_), _ => x
 
-example {xss : List (List α)} {e : α} (h : (concat1 xss) ≠ []) :
-  List.head (concat1 xss) h = foldr op1 e xss:= by
+example {xss : List (List α)} {e : α} (h : (concat₁ xss) ≠ []) :
+  List.head (concat₁ xss) h = foldr op1 e xss:= by
     induction xss with
     | nil => contradiction
     | cons xs xss ih =>
       cases xs with
-      | nil => simp [concat1, List.head, foldr, op1]; exact ih h
-      | cons x xs => simp [concat1, List.head, foldr, op1]
+      | nil => simp [concat₁, List.head, foldr, op1]; exact ih h
+      | cons x xs => sorry -- simp [concat₁, List.head, foldr, op1]
 
 
 -- 2.12

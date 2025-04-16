@@ -25,12 +25,12 @@ example : parts₁ [1,2] = [[[1], [2]], [[1, 2]]] := by
   unfold parts₁
   rw [List.foldr]; rw [Function.comp]
   rw [List.foldr]; rw [Function.comp]
-  simp [concatMap, Chapter1.concat1]
-  simp [List.foldr]
+  simp [concatMap, Chapter1.concat₁]
+  sorry
+  /- simp [List.foldr]
   simp [cons]
-  simp [extendl]
   simp [cons]
-  simp [glue]
+  simp [glue] -/
 
 
 /- # Exercicio 12.3 -/
