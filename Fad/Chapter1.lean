@@ -392,13 +392,21 @@ example (f : a → b → b)
    rw [← ih]
    rw [Function.comp]
 
-example (f : a → b → b)
- : List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
- := by
- funext xs
- let g := flip (List.foldr f)
- let h := List.foldr f e
- sorry
+
+example {a c : Type} (f : a → c → c) (e : c) :
+  List.foldr f e ∘ concat₁ = List.foldr (flip (List.foldr f)) e
+   := by
+  funext xs
+  let f₁ : List a → List a → List a := (· ++ ·)
+  let e₁ : List a := []
+  let g : List a → c → c := flip (List.foldr f)
+  let h : List a → c := List.foldr f e
+  rw [Function.comp_apply]
+  rw [concat₁]
+  apply foldr_fusion f₁ e₁ xs g h
+  intro x y
+  sorry
+  -- exact List.foldr_append f e x y
 
 
 def inits {a : Type} : List a → List (List a)
