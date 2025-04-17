@@ -384,7 +384,11 @@ example {a b : Type} (xs ys : List a) (f : a → b → b) (e : b)
 
 example {a b : Type} (xs ys : List a) (f : a → b → b) (e : b)
  : List.foldr f e (xs ++ ys) = List.foldr f (List.foldr f e ys) xs
- := by sorry
+ := by
+ induction xs with
+ | nil =>  rfl
+ | cons x xs ih =>
+ simp
 
 
 example {a b : Type} (f : a → b → b) (e : b)
