@@ -130,15 +130,21 @@ def foldl₁ {a b : Type} (f : b → a → b) (e : b) (xs : List a) : b :=
 example (f : b → a → b) (e : b) (xs : List a)
  : foldl f e xs = foldl₀ f e xs := by
  unfold foldl₀
- induction xs with
+ induction xs generalizing e with
  | nil =>
    rw [Function.comp, List.reverse, foldl]; simp
    rw [foldr]
  | cons y ys ih =>
    rw [Function.comp, List.reverse]; simp
-   rw [Function.comp] at ih
-   sorry
-
+   rw [foldl]
+   rw [ih (f e y)]
+   simp[Function.comp, foldl, flip]
+   induction ys.reverse with
+  | nil =>
+    simp [foldr, flip]
+  | cons hd tl ih =>
+    simp [foldr, flip]
+    rw [ih]
 
 -- ## Section 1.2 Processing lists
 
