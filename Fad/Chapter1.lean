@@ -43,9 +43,9 @@ example : filter (· > 5) [1,2,2,4,5,8,6] = [8,6] := rfl
 
 -- #eval filter (λ x => x % 2 ≠ 0) [1,2,3,4,5,6,7,8,9,10]
 
-def foldr {a b : Type} : (a → b → b) → b → List a → b
-| _, e, [] => e
-| f, e, (x::xs) => f x (foldr f e xs)
+def foldr {a b : Type} (f : a → b → b) (e : b) : List a → b
+| []      => e
+| x :: xs => f x (foldr f e xs)
 
 #eval foldr (λ x y => x + y) 0 [1,2,3]
 
@@ -57,7 +57,7 @@ example : foldr Nat.add 0 [1,2,3] = 6 := by
  rw [Nat.add]
 
 
-example : ∀ xs : List α, foldr List.cons [] xs = xs := by
+example {α : Type} : ∀ xs : List α, foldr List.cons [] xs = xs := by
   intro xs
   induction xs with
   | nil =>
@@ -127,24 +127,25 @@ def foldl₁ {a b : Type} (f : b → a → b) (e : b) (xs : List a) : b :=
   foldr (flip f) e xs.reverse
 
 
-example (f : b → a → b) (e : b) (xs : List a)
- : foldl f e xs = foldl₀ f e xs := by
- unfold foldl₀
+example {a b : Type} (f : b → a → b) (e : b) (xs : List a)
+ : foldl f e xs = foldl₁ f e xs := by
+ unfold foldl₁
  induction xs generalizing e with
  | nil =>
-   rw [Function.comp, List.reverse, foldl]; simp
+   rw [List.reverse, foldl]; simp
    rw [foldr]
- | cons y ys ih =>
-   rw [Function.comp, List.reverse]; simp
+ | cons r rs ih₁ =>
+   rw [List.reverse]
+   simp
    rw [foldl]
-   rw [ih (f e y)]
-   simp[Function.comp, foldl, flip]
-   induction ys.reverse with
-  | nil =>
-    simp [foldr, flip]
-  | cons hd tl ih =>
-    simp [foldr, flip]
-    rw [ih]
+   rw [ih₁ (f e r)]
+   induction rs.reverse with
+   | nil =>
+     simp [foldr, flip]
+   | cons z zs ih₂ =>
+     simp [foldr, flip]
+     simp [ih₂]
+
 
 -- ## Section 1.2 Processing lists
 
@@ -220,7 +221,7 @@ def scanl : (b → a → b ) → b → List a → List b
   "foo".toList ['a', 'b', 'c', 'd'] |>.map List.asString
 -/
 
-def scanr₀ (f : a → b → b) (q₀ : b) (as : List a) : List b :=
+def scanr₀ {a b : Type} (f : a → b → b) (q₀ : b) (as : List a) : List b :=
  let rec aux : List a → {l : List b // l ≠ []}
   | [] => Subtype.mk [q₀] (by simp)
   | (x :: xs) =>
