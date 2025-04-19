@@ -282,17 +282,27 @@ def picks {a : Type} : List a → List (a × List a)
 
 theorem picks_less {a : Type} (xs : List a) :
   ∀ (p : a × List a), p ∈ picks xs → p.2.length < xs.length := by
-  intro p h
   induction xs with
   | nil =>
-    cases h -- no elements in picks []
+    intro p h
+    cases h
   | cons x xs ih =>
-    rw [picks] at h
-    cases h with
-    | head => simp
-    | tail ys h1 =>
-      simp at h1
-      sorry
+    intro p h
+    simp [picks] at h
+    cases h
+    case inl peq =>
+      simp [peq, List.length]
+    case inr hex =>
+      cases hex
+      case intro a₁ h₁ =>
+        cases h₁
+        case intro b h₂ =>
+          cases h₂
+          case intro hmem peq =>
+            have := congrArg Prod.snd peq
+            rw [this.symm]
+            simp [List.length]
+            exact ih (a₁, b) hmem
 
 
 partial def perm₂ : List a → List (List a)
