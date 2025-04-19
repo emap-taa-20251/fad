@@ -386,12 +386,15 @@ example {a b : Type} (xs ys : List a) (f : a → b → b) (e : b)
 example {a b : Type} (xs ys : List a) (f : a → b → b) (e : b)
  : List.foldr f e (xs ++ ys) = List.foldr f (List.foldr f e ys) xs
  := by
- let f₁ := List.append (α := a)
- let e₁ : List a := []
- let g : List a → b → b := flip (List.foldr f)
- let h : List a → b := List.foldr f e
- -- apply foldr_fusion f₁ e₁ xs g h
- sorry
+ have h₁ : xs ++ ys = List.foldr List.cons ys xs := by simp
+ rw [h₁]
+ let g := f
+ let h := List.foldr f e
+ let f₁ := List.cons (α := a)
+ let e₁ := ys
+ apply foldr_fusion f₁ e₁ xs g h
+ intro z zs
+ simp [h, g, f₁]
 
 
 example {a b : Type} (f : a → b → b) (e : b)
