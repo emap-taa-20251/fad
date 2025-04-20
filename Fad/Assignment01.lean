@@ -18,36 +18,42 @@ def K : α → β → α :=
   fun a b ↦ a
 
 def C : (α → β → γ) → β → α → γ :=
-  sorry
+  fun f a b ↦ f b a
 
 def projFst : α → α → α :=
-  sorry
+  fun a _ ↦ a
 
 /- Give a different answer than for `projFst`. -/
 
 def projSnd : α → α → α :=
-  sorry
+  fun _ b ↦ b
 
 def someNonsense : (α → β → γ) → α → (α → γ) → β → γ :=
-  sorry
+  fun f a _ b ↦
+    let z : γ := f a b
+    -- let x : γ := g a
+    z
 
 
 /- ## Question 2
 
    Define a structure named RectangularPrism that contains the height, width,
    and depth of a rectangular prism, each as a Float.
-
-structure RectangularPrism where
- sorry
 -/
 
+structure RectangularPrism where
+ height : Float
+ width : Float
+ depth : Float
+deriving Repr
 
 /- ## Question 3
 
    Define a function named volume : RectangularPrism → Float that computes the
    volume of a rectangular prism. -/
 
-def volume (r : RectangularPrism) : Float := sorry
+def volume (r : RectangularPrism) : Float :=
+  r.height * r.width * r.depth
 
 
 /- ## Question 4
@@ -61,16 +67,25 @@ structure Point where
   y : Float
 deriving Repr
 
-/-
 structure Segment where
- sorry
--/
+  p1 : Point
+  p2 : Point
+deriving Repr
+
+def length (s : Segment) : Float :=
+  let dx := s.p2.x - s.p1.x
+  let dy := s.p2.y - s.p1.y
+  Float.sqrt (dx * dx + dy * dy)
 
 /- ## Question 5
 
    Which names are introduced by the declaration of RectangularPrism? -/
 
-def Names1 : List String := [""]
+def Names1 : List String :=
+ ["RectangularPrism.mk",
+  "RectangularPrism.height",
+  "RectangularPrism.width",
+  "RectangularPrism.depth"]
 
 /- ## Question 6
 
@@ -87,15 +102,21 @@ structure Book where
   author : String
   price : Float
 
-def Names2 : List String := [""]
+def Names2 : List String :=
+ ["Hamster.mk", "Hamster.name", "Hamster.fluffy",
+  "Book.makeBook", "Book.title", "Book.author", "Book.price"]
 
 /- ## Question 7
 
    Define a function product that produces the product of a list of
    numbers, and show using your definition that product [2,3,4].  -/
 
-def product (ns : List Nat) : Nat := sorry
+def product (ns : List Nat) : Nat :=
+  match ns with
+  | [] => 1
+  | n :: ns => n * product ns
 
+#eval product [2, 3, 4] -- should be 24
 
 
 end Assignment01
