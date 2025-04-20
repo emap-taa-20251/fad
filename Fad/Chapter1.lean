@@ -47,7 +47,7 @@ def foldr {a b : Type} (f : a → b → b) (e : b) : List a → b
 | []      => e
 | x :: xs => f x (foldr f e xs)
 
-#eval foldr (λ x y => x + y) 0 [1,2,3]
+-- #eval foldr (λ x y => x + y) 0 [1,2,3]
 
 example : foldr Nat.add 0 [1,2,3] = 6 := by
  unfold foldr
@@ -281,38 +281,47 @@ def picks {a : Type} : List a → List (a × List a)
 
 -- #eval picks [1,2,3,4]
 
-theorem picks_less {a : Type} (xs : List a) :
-  ∀ (p : a × List a), p ∈ picks xs → p.2.length < xs.length := by
-  intro p h
-  induction xs with
-  | nil =>
-    cases h -- no elements in picks []
-  | cons x xs ih =>
-    rw [picks] at h
-    cases h with
-    | head => simp
-    | tail ys h1 =>
-      simp at h1
-      sorry
-
-
-partial def perm₂ : List a → List (List a)
+partial def perm₂ {a : Type} : List a → List (List a)
   | [] => [[]]
   | xs =>
     let subperms p := (perm₂ p.2).map (p.1 :: ·)
     concatMap subperms (picks xs)
 
 
-def perm₃ : List a → List (List a)
+theorem picks_decreases {a : Type} (xs : List a)
+ : ∀ p, p ∈ picks xs → p.2.length < xs.length := by
+ induction xs with
+ | nil =>
+   intro p h
+   cases h
+ | cons x xs ih =>
+   intro p h
+   simp [picks] at h
+   cases h with
+   | inl peq =>
+     simp [peq, List.length]
+   | inr hex =>
+     cases hex with
+     | intro a₁ h₁ =>
+       cases h₁ with
+       | intro b h₂ =>
+         cases h₂ with
+         | intro hmem peq =>
+           have h₁ := congrArg Prod.snd peq
+           rw [h₁.symm]
+           simp [List.length]
+           exact ih (a₁, b) hmem
+
+
+def perm₃ {a : Type} : List a → List (List a)
   | [] => [[]]
   | x :: xs => concatMap (λ ⟨p, hp⟩ ↦
       have : p.2.length < (x :: xs).length := by
-        apply picks_less (x :: xs)
+        apply picks_decreases (x :: xs)
         exact hp
       (perm₃ p.2).map (p.1 :: ·))
       (picks (x :: xs)).attach
  termination_by xs => xs.length
-
 
 
 partial def until' (p: a → Bool) (f: a → a) (x : a) : a :=
@@ -504,11 +513,6 @@ def collapse₃ (xss : List (List Int)) : List Int :=
 #eval collapse₃ [[-2,1],[-3],[2,4]]
 #eval collapse₃ [[-2,1],[3],[2,4]]
 -/
-
-example : collapse₃ [[-2,1],[3],[2,4]] = [-2, 1, 3] := by
-  unfold collapse₃
-  simp [List.map, List.sum, List.foldr]
-  sorry
 
 
 end Chapter1
