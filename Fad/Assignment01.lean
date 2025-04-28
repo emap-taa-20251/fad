@@ -15,7 +15,7 @@ def I : α → α :=
   fun a ↦ a
 
 def K : α → β → α :=
-  fun a b ↦ a
+  fun a _ ↦ a
 
 def C : (α → β → γ) → β → α → γ :=
   fun f a b ↦ f b a

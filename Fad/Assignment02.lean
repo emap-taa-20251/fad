@@ -6,30 +6,16 @@ namespace Assignment02
 /- ## Exercise 1.9
 
 Escreva a definições em Lean dos códigos alternativos de foldr e foldl.
--/
 
-def foldr {a b : Type} [Inhabited a]
-  (f : a → b → b) (e : b) (xs : List a) : b :=
-  if h : xs.isEmpty then
-    e
-  else
-    have : xs.length - 1 < xs.length := by
-     cases xs with
-     | nil => simp at h
-     | cons a as => simp
-    f (List.head xs (by simp at h; intro h₁ ; exact (h h₁)))
-      (foldr f e xs.tail)
-termination_by xs.length
+Response: See Chapter1-Ex.lean
+-/
 
 
 /- ## Exercise 1.12
 
 pode-se completar as equações. Apresente as mesmas como `example` abaixo.
 
-example : map (foldl f e) ∘ inits = ??? := sorry
-
-example : map (foldr f e) ∘ tails = ??? := sorry
-
+Response: See Chapter1-Ex.lean
 -/
 
 /- ## Question L.1: Snoc

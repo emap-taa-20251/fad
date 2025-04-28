@@ -171,6 +171,56 @@ def dropWhileEnd {α : Type} (p : α → Bool) (xs : List α) : List α :=
  xs.foldr op []
 
 
+/- # Exercicio 1.9 -/
+
+def foldr' {a b : Type} [Inhabited a]
+  (f : a → b → b) (e : b) (xs : List a) : b :=
+  if h : xs.isEmpty then
+    e
+  else
+    have : xs.length - 1 < xs.length := by
+     cases xs with
+     | nil => simp at h
+     | cons a as => simp
+    f (List.head xs (by simp at h; intro h₁ ; exact (h h₁)))
+      (foldr' f e xs.tail)
+termination_by xs.length
+
+def last₁ {a : Type} : List a → Option a
+  | []      => none
+  | [x]     => some x
+  | _ :: xs => last₁ xs
+
+def last₂ {a : Type} (as : List a) (ok : as.reverse ≠ []) : a :=
+  as.reverse.head ok
+
+def init₁ {a : Type} [Inhabited a] : List a → List a
+  | []      => default
+  | [_]     => []
+  | x :: xs => x :: init₁ xs
+
+def init₂ {a : Type} : List a → List a :=
+  List.reverse ∘ List.tail ∘ List.reverse
+
+
+def foldl' {a b : Type}
+  (f : b → a → b) (e : b) (xs : List a) : b :=
+  if h: xs.isEmpty then
+    e
+  else
+    have : (init₂ xs).length < xs.length := by
+     unfold init₂
+     cases xs with
+     | nil => simp; simp at h
+     | cons a as => simp
+    have h₂ : xs.reverse ≠ [] := by
+      induction xs with
+      | nil => contradiction
+      | cons b bs ih =>  simp
+    f (foldl' f e (init₂ xs)) (last₂ xs h₂)
+termination_by xs.length
+
+
 /- # Exercicio 1.11 -/
 
 def integer: List Nat → Nat :=
