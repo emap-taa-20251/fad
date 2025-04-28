@@ -1,5 +1,6 @@
 import Fad.Chapter1
 import Fad.«Chapter1-Ex»
+import Lean
 
 namespace Chapter2
 open Chapter1 (dropWhile)
@@ -46,13 +47,22 @@ def concat₀ : List (List a) → List a
  | (xs :: xss) => xs ++ concat₀ xss
 
 def concat₁ (xss : List (List a)) : List a :=
- dbg_trace "concat₁ {xss.length}"
+ dbg_trace "concat₁ with {xss.length}"
  match xss with
   | [] => []
   | (xs :: xss) => xs ++ concat₁ xss
 
--- #eval concat₁ [[1, 2], [3, 4], [5, 6]]
+/-
+#eval concat₁ [[1, 2], [3, 4], [5, 6]]
 
+#eval timeit "concat₁" (pure $
+  Chapter1.concat₁
+   (List.replicate 2000 <| List.replicate 100 1) |>.length)
+
+#eval timeit "concat₂" (pure $
+  Chapter1.concat₂
+   (List.replicate 2000 <| List.replicate 100 1) |>.length)
+-/
 
 -- # 2.4 Amortised running times
 

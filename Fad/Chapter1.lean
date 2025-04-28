@@ -175,39 +175,37 @@ def concat₂ {a : Type} : List (List a) → List a :=
 example : concat₁ [[1,2,3,4], [5], [6]] = [1,2,3,4,5,6] := by
   unfold concat₁
   unfold List.foldr
+  unfold List.foldr
+  unfold List.foldr
+  unfold List.foldr
   rw [List.append.eq_2]
   rw [List.append.eq_2]
   rw [List.append.eq_2]
   rw [List.append.eq_2]
   rw [List.append.eq_1]
-  unfold List.foldr
   rw [List.append.eq_2]
   rw [List.append.eq_1]
-  unfold List.foldr
   rw [List.append.eq_2]
   rw [List.append.eq_1]
-  unfold List.foldr
-  rfl
 
 example : concat₂ [[1,2,3,4], [5], [6]] = [1,2,3,4,5,6] := by
   unfold concat₂
   unfold List.foldl
-  rw [List.append.eq_1]
   unfold List.foldl
+  unfold List.foldl
+  unfold List.foldl
+  rw [List.append.eq_1]
+  rw [List.append.eq_2]
+  rw [List.append.eq_2]
+  rw [List.append.eq_2]
+  rw [List.append.eq_2]
   rw [List.append.eq_2]
   rw [List.append.eq_2]
   rw [List.append.eq_2]
   rw [List.append.eq_2]
   rw [List.append.eq_1]
-  unfold List.foldl
-  rw [List.append.eq_2]
-  rw [List.append.eq_2]
-  rw [List.append.eq_2]
-  rw [List.append.eq_2]
   rw [List.append.eq_2]
   rw [List.append.eq_1]
-  unfold List.foldl
-  rfl
 
 
 def scanl : (b → a → b ) → b → List a → List b

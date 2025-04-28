@@ -1,4 +1,3 @@
-
 import Fad.Chapter1
 
 namespace Assignment02
