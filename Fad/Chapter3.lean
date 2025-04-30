@@ -3,6 +3,7 @@ import Fad.«Chapter1-Ex»
 
 namespace Chapter3
 
+
 open List (reverse tail cons)
 
 /- # Section 3.1 Symmetric lists -/
@@ -11,7 +12,6 @@ def _root_.List.single (xs : List α) : Bool := xs.length = 1
 
 def snoc {a : Type} (x : a) (xs : List a) : List a :=
   xs ++ [x]
-
 
 namespace SL1
 
@@ -31,13 +31,22 @@ def consSL : a → SymList a → SymList a
 | z, (xs, []) => ([z], xs)
 | z, (xs, ys) => (z :: xs, ys)
 
+
+example {a : Type} (x : a) (xs : SymList a)
+ : (snoc x ∘ fromSL) xs = (fromSL ∘ snocSL x) xs
+ := by
+ have (as, bs) := xs
+ unfold Function.comp
+ unfold fromSL snoc snocSL
+ simp
+ sorry
+
 def toSL : List a → SymList a
  | [] => nilSL
  | x :: xs => consSL x (toSL xs)
 
 def lastSL : SymList a → Option a
 | (xs, ys) => if ys.isEmpty then xs.head? else ys.head?
-
 
 def tailSL (sl : SymList a) : Option (SymList a) :=
  match sl with
@@ -52,8 +61,6 @@ def tailSL (sl : SymList a) : Option (SymList a) :=
 end SL1
 
 /-
- https://lean-lang.org/functional_programming_in_lean/props-proofs-indexing.html#evidence-as-arguments
-
  Uma segunda implementação onde o tipo carrega a prova das invariantes da
  estrutura.
 -/
@@ -67,9 +74,9 @@ end SL1
 #eval [1,2].head (by simp)
 
 def test (xs : List α) (ok : xs.length > 2) : α := xs[2]
+
 #eval test [1, 2, 3, 4] (by simp)
 -/
-
 
 namespace SL2
 open Chapter1 (dropWhile)
@@ -89,17 +96,18 @@ structure SymList (α : Type) where
        (rhs.isEmpty → lhs.isEmpty ∨ lhs.length = 1)
  deriving Repr
 
-def nilSL : SymList a := SymList.mk [] [] (by simp)
+def nilSL {a : Type} : SymList a := SymList.mk [] [] (by simp)
 
-instance : Inhabited (SymList α) where
+
+instance {α : Type} : Inhabited (SymList α) where
   default := nilSL
 
 def fromSL (sl : SymList a) : List a :=
  sl.lhs ++ sl.rhs.reverse
 
 def snocSL : a → SymList a → SymList a
-| z, SymList.mk [] bs _ => SymList.mk bs [z] (by simp)
-| z, SymList.mk (a::as) bs _ => SymList.mk (a::as) (z :: bs) (by simp)
+| z, ⟨ [], bs, _ ⟩ => SymList.mk bs [z] (by simp)
+| z, ⟨ a::as, bs, _ ⟩ => SymList.mk (a::as) (z :: bs) (by simp)
 
 def consSL : a → SymList a → SymList a
 | z, SymList.mk xs [] _ => SymList.mk [z] xs (by simp)
@@ -115,7 +123,7 @@ def headSL : SymList a → Option a
  | ⟨x::_, _, _⟩    => some x
 
 def headSL! [Inhabited a] : SymList a → a
- | ⟨[], [], _⟩     => panic! "headSL of empty SL"
+ | ⟨[], [], _⟩     => panic!"empty list"
  | ⟨[], y :: _, _⟩ => y
  | ⟨x::_, _, _⟩    => x
 
@@ -285,7 +293,7 @@ theorem lengthSL_zero_iff_nilSL: lengthSL sl = 0 ↔ sl = nilSL := by
   apply Iff.intro <;> intro h
   rw [lengthSL] at h
   rw [Nat.add_eq_zero_iff] at h
-  repeat rw [List.length_eq_zero] at h
+  repeat rw [List.length_eq_zero_iff] at h
   unfold nilSL
   have ⟨h1, h2⟩ := h
   have ⟨lhs, rhs, ok⟩ := sl
@@ -369,7 +377,7 @@ example {a : Type} : List.getLast? ∘ fromSL = @lastSL a := by
   have ⟨lhs, rhs, ok⟩ := sl
   simp [Function.comp, lastSL, fromSL]
   split <;> rename_i h
-  rw [List.isEmpty_eq_true] at h
+  rw [List.isEmpty_iff] at h
   subst h
   simp at ok ⊢
   apply ok.elim <;> intro h2
@@ -400,11 +408,12 @@ example {a : Type} : List.dropLast ∘ fromSL = fromSL ∘ @initSL a := by
       simp [initSL, nilSL]
     . match hc: lhs ++ rhs.reverse with
       | [] =>
-        rw [List.append_eq_nil] at hc
+        rw [List.append_eq_nil_iff] at hc
         have ⟨hln, _⟩ := hc
         contradiction
       | [_] =>
-        rw [←(not_congr (List.length_eq_zero)), ← ne_eq, Nat.ne_zero_iff_zero_lt] at hl hr
+        rw [←(not_congr (List.length_eq_zero_iff)),
+            ← ne_eq, Nat.ne_zero_iff_zero_lt] at hl hr
         have h2 : lhs.length + rhs.length > 1 := by omega
         have h3 := congrArg List.length hc
         simp at h3

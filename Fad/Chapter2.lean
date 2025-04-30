@@ -62,6 +62,7 @@ def concat₁ (xss : List (List a)) : List a :=
 #eval timeit "concat₂" (pure $
   Chapter1.concat₂
    (List.replicate 2000 <| List.replicate 100 1) |>.length)
+
 -/
 
 -- # 2.4 Amortised running times
@@ -71,15 +72,18 @@ def build (p : a → a → Bool) : List a → List a :=
  where
   insert x xs := x :: dropWhile (p x) xs
 
--- #eval build (· = ·) [4,4,2,1,1,1,2,5]
-
-example :
- build (fun x y => x = y) [4,4,2,1] = [4, 2, 1] := by
+example : build (· = ·) [4,4,2,1,1] = [4, 2, 1] := by
  unfold build
  unfold List.foldr
- unfold build.insert
  unfold List.foldr
- unfold dropWhile; simp
+ unfold List.foldr
+ unfold List.foldr
+ unfold List.foldr
+ unfold build.insert
+ rw [dropWhile]
+ rw [dropWhile]
+ rw [dropWhile]
+ simp
  rfl
 
 
