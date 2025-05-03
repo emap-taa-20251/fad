@@ -3,7 +3,6 @@ import Fad.«Chapter1-Ex»
 
 namespace Chapter3
 
-
 open List (reverse tail cons)
 
 /- # Section 3.1 Symmetric lists -/
@@ -13,10 +12,10 @@ def _root_.List.single (xs : List α) : Bool := xs.length = 1
 def snoc {a : Type} (x : a) (xs : List a) : List a :=
   xs ++ [x]
 
+
 namespace SL1
 
 abbrev SymList (α : Type u) := (List α) × (List α)
-
 
 def nilSL : SymList a := ([], [])
 
@@ -31,55 +30,34 @@ def consSL : a → SymList a → SymList a
 | z, (xs, []) => ([z], xs)
 | z, (xs, ys) => (z :: xs, ys)
 
-
 example {a : Type} (x : a) (xs : SymList a)
  : (snoc x ∘ fromSL) xs = (fromSL ∘ snocSL x) xs
  := by
  have (as, bs) := xs
- unfold Function.comp
- unfold fromSL snoc snocSL
- simp
- sorry
-
-def toSL : List a → SymList a
- | [] => nilSL
- | x :: xs => consSL x (toSL xs)
-
-def lastSL : SymList a → Option a
-| (xs, ys) => if ys.isEmpty then xs.head? else ys.head?
-
-def tailSL (sl : SymList a) : Option (SymList a) :=
- match sl with
- | ([],       []) => none
- | ([],  _ :: []) => some nilSL
- | (_ :: [],  ys) =>
-   let (us, vs) := ys.splitAt (ys.length / 2)
-   some (reverse vs, us)
- | (xs,       ys) => some (tail xs, ys)
+ unfold Function.comp snoc
+ induction as generalizing bs with
+ | nil =>
+   simp [snocSL, fromSL]; sorry
+ | cons y ys ih => sorry
 
 
 end SL1
 
 /-
- Uma segunda implementação onde o tipo carrega a prova das invariantes da
- estrutura.
--/
-
-/-
 #check ([] : List Nat)
 #eval ([] : List Nat).head?
 #eval [1,2].head?
-
 #eval [].head (by simp)
 #eval [1,2].head (by simp)
 
 def test (xs : List α) (ok : xs.length > 2) : α := xs[2]
-
 #eval test [1, 2, 3, 4] (by simp)
 -/
 
 namespace SL2
 open Chapter1 (dropWhile)
+
+variable {a : Type}
 
 -- it may simplify the proofs
 structure SymList' (α : Type) where
@@ -96,25 +74,84 @@ structure SymList (α : Type) where
        (rhs.isEmpty → lhs.isEmpty ∨ lhs.length = 1)
  deriving Repr
 
-def nilSL {a : Type} : SymList a := SymList.mk [] [] (by simp)
-
+def nil : SymList a := SymList.mk [] [] (by simp)
 
 instance {α : Type} : Inhabited (SymList α) where
-  default := nilSL
+  default := nil
 
 def fromSL (sl : SymList a) : List a :=
  sl.lhs ++ sl.rhs.reverse
-
-def snocSL : a → SymList a → SymList a
-| z, ⟨ [], bs, _ ⟩ => SymList.mk bs [z] (by simp)
-| z, ⟨ a::as, bs, _ ⟩ => SymList.mk (a::as) (z :: bs) (by simp)
 
 def consSL : a → SymList a → SymList a
 | z, SymList.mk xs [] _ => SymList.mk [z] xs (by simp)
 | z, SymList.mk xs (y::ys) _ => SymList.mk (z :: xs) (y::ys) (by simp)
 
+
+example (x : a) : cons x ∘ fromSL = fromSL ∘ consSL x := by
+ funext s
+ cases s with
+ | mk as bs h =>
+   cases bs with
+   | nil =>
+     simp [consSL, fromSL]
+     simp at h
+     apply Or.elim h
+     intro h1 ; rw [h1]; simp
+     intro h1
+     cases as with
+     | nil => simp
+     | cons z zs =>
+       simp at h1
+       rw [h1]; simp
+   | cons z zs => simp [consSL, fromSL]
+
+
+def snocSL : a → SymList a → SymList a
+| z, ⟨ [], bs, _ ⟩ => ⟨bs, [z], by simp⟩
+| z, ⟨ a::as, bs, _ ⟩ => ⟨ (a::as), (z :: bs), by simp⟩
+
+
+example {a : Type} (x : a) : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
+  funext sl
+  simp [Function.comp]
+  have ⟨lhs, rhs, ok⟩ := sl
+  unfold snoc snocSL fromSL
+  match h: lhs with
+  | [] =>
+    simp [h]
+    simp at ok
+    apply ok.elim <;> intro h2; simp [h2]
+    have a :: [] := rhs
+    simp
+  | y :: ys => simp
+
+
+def isEmpty {a : Type} (sl : SymList a) : Prop :=
+  sl.lhs.isEmpty ∧ sl.rhs.isEmpty
+
+def lastSL {a : Type} (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
+ match sl with
+ | ⟨xs, ys, hp⟩ =>
+   if h₁ : ys.isEmpty then
+     xs.head (by
+      unfold isEmpty at ne; simp at ne
+      intro h₂
+      apply ne
+      exact h₂
+      simp at h₁
+      exact h₁)
+   else
+     ys.head (by simp at h₁ ; exact h₁)
+
+
+example {sl : SymList a}
+  (hp₁ : ¬ isEmpty sl) (h₂ : (fromSL sl).length > 0)
+  : ((λ as ↦ Chapter1.last₁ as hp₂) ∘ fromSL) sl = lastSL sl hp₁ := by
+  sorry
+
+
 def toSL : List a → SymList a
- | [] => nilSL
+ | [] => nil
  | x :: xs => consSL x (toSL xs)
 
 def headSL : SymList a → Option a
@@ -127,11 +164,7 @@ def headSL! [Inhabited a] : SymList a → a
  | ⟨[], y :: _, _⟩ => y
  | ⟨x::_, _, _⟩    => x
 
-def lastSL : SymList a → Option a
-| SymList.mk xs ys _ => if ys.isEmpty then xs.head? else ys.head?
 
-def nullSL (sl : SymList a) : Bool :=
-  sl.lhs.isEmpty ∧ sl.rhs.isEmpty
 
 def singleSL (sl : SymList a): Bool :=
   (List.single sl.lhs ∧ sl.rhs.isEmpty) ∨
@@ -169,6 +202,7 @@ def tailSL {a : Type} (as : SymList a) : SymList a :=
         simp [← not_congr List.length_eq_zero_iff] at h
         apply And.intro <;> (intro h3; have k :: (l :: ms) := xs)
         repeat simp [ok] at *))
+
 
 def initSL {a : Type} : (sl : SymList a) → SymList a
 | ⟨xs, ys, ok⟩ =>
@@ -299,7 +333,6 @@ theorem lengthSL_zero_iff_nilSL: lengthSL sl = 0 ↔ sl = nilSL := by
   have ⟨lhs, rhs, ok⟩ := sl
   simp at h1 h2
   simp [h1, h2]
-
   rw [h]
   unfold nilSL lengthSL
   simp
@@ -323,38 +356,7 @@ def dropWhileSL (p : a → Bool) (sl : SymList a) : SymList a :=
       else sl
   termination_by lengthSL sl
 
-example {a : Type} (x : a) : cons x ∘ fromSL = fromSL ∘ consSL x := by
- funext s
- cases s with
- | mk as bs h =>
-   cases bs with
-   | nil =>
-     simp [consSL, fromSL]
-     simp at h
-     apply Or.elim h
-     intro h1 ; rw [h1]; simp
-     intro h1
-     cases as with
-     | nil => simp
-     | cons z zs =>
-       simp at h1
-       rw [h1]; simp
-   | cons z zs => simp [consSL, fromSL]
 
-
-example {a : Type} (x : a) : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
-  funext sl
-  simp [Function.comp]
-  have ⟨lhs, rhs, ok⟩ := sl
-  unfold snoc snocSL fromSL
-  match h: lhs with
-  | [] =>
-    simp [h]
-    simp at ok
-    apply ok.elim <;> intro h2; simp [h2]
-    have a :: [] := rhs
-    simp
-  | y :: ys => simp
 
 
 example {a : Type} : List.head? ∘ fromSL = @headSL a := by
@@ -441,6 +443,18 @@ example (p : α → Bool)
 
 
 end SL2
+
+/- examples of use -/
+
+open List (map reverse tails) in
+
+def inits₁ : List a → List (List a) :=
+ map reverse ∘ reverse ∘ tails ∘ reverse
+
+def inits₂ : List a → List (List a) :=
+ List.map SL2.fromSL ∘ List.scanl (flip SL2.snocSL) SL2.nil
+
+
 
 
 -- 3.2 Random-access lists

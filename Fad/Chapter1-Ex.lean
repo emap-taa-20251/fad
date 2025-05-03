@@ -1,4 +1,5 @@
 import Fad.Chapter1
+import Batteries
 
 namespace Chapter1
 
@@ -186,20 +187,11 @@ def foldr' {a b : Type} [Inhabited a]
       (foldr' f e xs.tail)
 termination_by xs.length
 
-def last₁ {a : Type} : List a → Option a
-  | []      => none
-  | [x]     => some x
-  | _ :: xs => last₁ xs
 
-def last₂ {a : Type} (as : List a) (ok : as.reverse ≠ []) : a :=
-  as.reverse.head ok
+def last₁ {a : Type} (as : List a) (ok : as ≠ []) : a :=
+  as.reverse.head (by simp [List.length_reverse]; assumption)
 
-def init₁ {a : Type} [Inhabited a] : List a → List a
-  | []      => default
-  | [_]     => []
-  | x :: xs => x :: init₁ xs
-
-def init₂ {a : Type} : List a → List a :=
+def init₁ {a : Type} : List a → List a :=
   List.reverse ∘ List.tail ∘ List.reverse
 
 
@@ -208,16 +200,13 @@ def foldl' {a b : Type}
   if h: xs.isEmpty then
     e
   else
-    have : (init₂ xs).length < xs.length := by
-     unfold init₂
+    have : (init₁ xs).length < xs.length := by
+     unfold init₁
      cases xs with
      | nil => simp; simp at h
      | cons a as => simp
-    have h₂ : xs.reverse ≠ [] := by
-      induction xs with
-      | nil => contradiction
-      | cons b bs ih =>  simp
-    f (foldl' f e (init₂ xs)) (last₂ xs h₂)
+    have h₂ : xs ≠ [] := by simp at h ; assumption
+    f (foldl' f e (init₁ xs)) (last₁ xs h₂)
 termination_by xs.length
 
 
@@ -248,17 +237,17 @@ example {a b : Type} (f : b → a → b) (e : b) :
     simp
 
 example {α β : Type} (f : α → β → β) (e : β) :
-  List.map (List.foldr f e) ∘ tails = scanr f e := by
+  List.map (List.foldr f e) ∘ tails = List.scanr f e := by
   funext xs
-  induction xs generalizing e with
+  induction xs with
   | nil =>
     simp [Function.comp]
-    simp [tails, map, scanr, List.foldr]
+    simp [tails, map, List.scanr, List.foldr]
   | cons y ys ih =>
-    rw [Function.comp, tails]; simp
-    simp [scanr]
+    simp [List.map, tails]
+    rw [Function.comp] at ih
+    rw [ih]
     sorry
-
 
 
 /- # Exercicio 1.13 -/

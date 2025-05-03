@@ -23,14 +23,11 @@ Define the function `snoc` that appends a single element to the
 end of a list. Your function should be defined by recursion and not using `++`
 (`List.append`). -/
 
-def snoc {α : Type} : List α → α → List α :=
-  sorry
-
-/- Convince yourself that your definition of `snoc` works by
-testing it on a few examples. -/
+def snoc {α : Type} : List α → α → List α
+ | [], n => [n]
+ | m :: ms, n => m :: snoc ms n
 
 -- #eval snoc [1] 2
--- invoke `#eval` or `#reduce` here
 
 
 /- ## Question L.2: Sum
@@ -39,9 +36,9 @@ Define a `sum` function that computes the sum of all the numbers
 in a list. -/
 
 def sum : List Nat → Nat :=
-  sorry
+  List.foldr (fun n acc => n + acc) 0
 
--- #eval sum [1, 12, 3]   -- expected: 16
+-- #eval sum [1, 12, 3]
 
 /- State (without proving them) the following properties of `sum` as theorems.
    Schematically:
@@ -52,8 +49,19 @@ def sum : List Nat → Nat :=
 
 Try to give meaningful names to your theorems. Use `sorry` as the proof. -/
 
--- enter your theorem statements here
+example : sum (snoc ms n) = n + sum ms := by
+  unfold sum
+  induction ms with
+  | nil =>
+    simp [snoc]
+  | cons m ms ih =>
+    simp [snoc, ih]
+    exact Nat.add_left_comm m n (List.foldr (fun n acc => n + acc) 0 ms)
+    done
 
+example : sum (ms ++ ns) = sum ms + sum ns := sorry
+
+example : sum ns.reverse = sum ns := sorry
 
 /- ## Question L.3
 
@@ -66,7 +74,16 @@ Schematically:
 Try to give meaningful names to your theorems. Also, make sure to state the
 second property as generally as possible, for arbitrary types. -/
 
--- enter your theorem statements here
+example (xs : List a) : xs.map (fun x ↦ x) = xs := by
+  induction xs with
+  | nil =>
+    simp [List.map]
+  | cons x xs ih =>
+    simp [List.map, ih]
+    done
+
+example (xs : List a) (f : a → b) (g : b → c) :
+  xs.map (fun x ↦ g (f x)) = (xs.map f).map g := sorry
 
 
 /- ## Question L.4 Arithmetic Expressions
@@ -91,7 +108,7 @@ def eval (env : String → Int) : AExp → Int
   | AExp.mul e₁ e₂ => eval env e₁ * eval env e₂
   | AExp.div e₁ e₂ => eval env e₁ / eval env e₂
 
-#eval eval (fun x ↦ 7) (AExp.div (AExp.var "y") (AExp.num 0))
+#eval eval (fun x ↦ 7) (AExp.div (AExp.var "x") (AExp.num 1))
 
 /- Test that `eval` behaves as expected. Make sure to exercise each
 constructor at least once. You can use the following environment in your tests.
