@@ -108,7 +108,7 @@ def eval (env : String → Int) : AExp → Int
   | AExp.mul e₁ e₂ => eval env e₁ * eval env e₂
   | AExp.div e₁ e₂ => eval env e₁ / eval env e₂
 
-#eval eval (fun x ↦ 7) (AExp.div (AExp.var "x") (AExp.num 1))
+-- #eval eval (fun x ↦ 7) (AExp.div (AExp.var "x") (AExp.num 0))
 
 /- Test that `eval` behaves as expected. Make sure to exercise each
 constructor at least once. You can use the following environment in your tests.
@@ -122,7 +122,7 @@ def someEnv : String → Int
   | "y" => 17
   | _   => 201
 
-#eval eval someEnv (AExp.var "x")   -- expected: 3
+-- #eval eval someEnv (AExp.var "x")   -- expected: 3
 
 /- The following function simplifies arithmetic expressions involving
 addition. It simplifies `0 + e` and `e + 0` to `e`. Complete the definition so
@@ -132,8 +132,14 @@ operators. -/
 def simplify : AExp → AExp
   | AExp.add (AExp.num 0) e₂ => simplify e₂
   | AExp.add e₁ (AExp.num 0) => simplify e₁
-  -- insert the missing cases here
-  -- catch-all cases below
+  | AExp.mul (AExp.num 1) e₂ => simplify e₂
+  | AExp.mul e₁ (AExp.num 1) => simplify e₁
+  | AExp.mul _ (AExp.num 0) => (AExp.num 0)
+  | AExp.mul (AExp.num 0) _ => (AExp.num 0)
+  | AExp.div e₁ (AExp.num 1) => simplify e₁
+  | AExp.div (AExp.num 0) _ => (AExp.num 0)
+  | AExp.sub e₁ (AExp.num 0) => simplify e₁
+  | AExp.sub (AExp.num 0) e₂ => AExp.mul (AExp.num (-1)) (simplify e₂)
   | AExp.num i               => AExp.num i
   | AExp.var x               => AExp.var x
   | AExp.add e₁ e₂           => AExp.add (simplify e₁) (simplify e₂)
@@ -151,8 +157,9 @@ Given an environment `env` and an expression `e`, state (without proving it)
 the property that the value of `e` after simplification is the same as the
 value of `e` before. -/
 
-theorem simplify_correct (env : String → ℤ) (e : AExp) :
-  True := sorry   -- replace `True` by your theorem statement
+theorem simplify_correct (env : String → Int) (e : AExp)
+ : eval env (simplify e) = eval env e := by sorry
+
 
 
 end Assignment02
