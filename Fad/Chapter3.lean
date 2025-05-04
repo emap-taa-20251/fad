@@ -60,23 +60,24 @@ open Chapter1 (dropWhile)
 variable {a : Type}
 
 -- it may simplify the proofs
-structure SymList' (α : Type) where
-  lhs : List α
-  rhs : List α
+structure SymList' (a : Type) where
+  lhs : List a
+  rhs : List a
   ok : (lhs.length = 0 → rhs.length ≤ 1) ∧
        (rhs.length = 0 → lhs.length ≤ 1)
  deriving Repr
 
-structure SymList (α : Type) where
-  lhs : List α
-  rhs : List α
+structure SymList (a : Type) where
+  lhs : List a
+  rhs : List a
   ok : (lhs.isEmpty → rhs.isEmpty ∨ rhs.length = 1) ∧
        (rhs.isEmpty → lhs.isEmpty ∨ lhs.length = 1)
  deriving Repr
 
+
 def nil : SymList a := SymList.mk [] [] (by simp)
 
-instance {α : Type} : Inhabited (SymList α) where
+instance : Inhabited (SymList a) where
   default := nil
 
 def fromSL (sl : SymList a) : List a :=
@@ -111,7 +112,7 @@ def snocSL : a → SymList a → SymList a
 | z, ⟨ a::as, bs, _ ⟩ => ⟨ (a::as), (z :: bs), by simp⟩
 
 
-example {a : Type} (x : a) : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
+example (x : a) : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
   funext sl
   simp [Function.comp]
   have ⟨lhs, rhs, ok⟩ := sl
@@ -126,7 +127,7 @@ example {a : Type} (x : a) : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
   | y :: ys => simp
 
 
-def isEmpty {a : Type} (sl : SymList a) : Bool :=
+def isEmpty (sl : SymList a) : Bool :=
   sl.lhs.isEmpty ∧ sl.rhs.isEmpty
 
 theorem sl_empty_l_empty :
@@ -150,9 +151,9 @@ theorem sl_noempty_l_noempty :
   assumption
 
 
-def lastSL {a : Type} (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
+def lastSL (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
  match sl with
- | ⟨xs, ys, hp⟩ =>
+ | ⟨xs, ys, _⟩ =>
    if h₁ : ys.isEmpty then
      xs.head (by
       unfold isEmpty at ne; simp at ne
@@ -164,6 +165,11 @@ def lastSL {a : Type} (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
    else
      ys.head (by simp at h₁ ; exact h₁)
 
+def lastSL? : SymList a → Option a
+| ⟨[], [], _⟩ => none
+| ⟨x :: _, [], _⟩ => x
+| ⟨[], y :: _, _⟩ => y
+| ⟨_, y :: _, _⟩ => y
 
 example (sl : SymList a) (h : ¬ isEmpty sl)
   : (fromSL sl).getLast (sl_noempty_l_noempty sl h) = lastSL sl h := by
