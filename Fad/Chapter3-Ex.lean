@@ -67,6 +67,7 @@ end SL1
 namespace SL1
 open Chapter1 (dropWhile)
 
+/-
 def dropWhileSL₁ (p : α → Bool) (sl : SymList α) : SymList α :=
  let us := sl.1.dropWhile p
  if us.isEmpty then toSL (sl.2.reverse.dropWhile p) else (us, sl.2)
@@ -91,7 +92,7 @@ example (p : α → Bool)
   simp [Function.comp]
   simp [fromSL]
   sorry -- it should not be proved
-
+-/
 
 end SL1
 

@@ -126,8 +126,29 @@ example {a : Type} (x : a) : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
   | y :: ys => simp
 
 
-def isEmpty {a : Type} (sl : SymList a) : Prop :=
+def isEmpty {a : Type} (sl : SymList a) : Bool :=
   sl.lhs.isEmpty ∧ sl.rhs.isEmpty
+
+theorem sl_empty_l_empty :
+  ∀ sl : SymList a, isEmpty sl → (fromSL sl).isEmpty
+  := by
+  intro sl h
+  have ⟨as, bs, h₁⟩ := sl
+  unfold isEmpty at h
+  simp at h
+  simp [fromSL]
+  assumption
+
+theorem sl_noempty_l_noempty :
+  ∀ sl : SymList a, ¬ isEmpty sl → (fromSL sl) ≠ []
+  := by
+  intro sl h
+  have ⟨as, bs, h₁⟩ := sl
+  unfold isEmpty at h
+  simp at h
+  simp [fromSL]
+  assumption
+
 
 def lastSL {a : Type} (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
  match sl with
@@ -144,10 +165,30 @@ def lastSL {a : Type} (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
      ys.head (by simp at h₁ ; exact h₁)
 
 
-example {sl : SymList a}
-  (hp₁ : ¬ isEmpty sl) (h₂ : (fromSL sl).length > 0)
-  : ((λ as ↦ Chapter1.last₁ as hp₂) ∘ fromSL) sl = lastSL sl hp₁ := by
+example (sl : SymList a) (h : ¬ isEmpty sl)
+  : (fromSL sl).getLast (sl_noempty_l_noempty sl h) = lastSL sl h := by
+  have ⟨as, bs, h₂⟩ := sl
+  unfold lastSL fromSL
+  have h₃ := sl_noempty_l_noempty _ h
+  simp [fromSL] at h₃ ; simp
   sorry
+
+/-
+example {a : Type} : List.getLast? ∘ fromSL = @lastSL a := by
+  funext sl
+  have ⟨lhs, rhs, ok⟩ := sl
+  simp [Function.comp, lastSL, fromSL]
+  split <;> rename_i h
+  rw [List.isEmpty_iff] at h
+  subst h
+  simp at ok ⊢
+  apply ok.elim <;> intro h2
+  simp [h2]
+  have y :: [] := lhs
+  simp
+  have z :: _ := rhs
+  simp
+-/
 
 
 def toSL : List a → SymList a
@@ -163,7 +204,6 @@ def headSL! [Inhabited a] : SymList a → a
  | ⟨[], [], _⟩     => panic!"empty list"
  | ⟨[], y :: _, _⟩ => y
  | ⟨x::_, _, _⟩    => x
-
 
 
 def singleSL (sl : SymList a): Bool :=
@@ -194,8 +234,8 @@ def tailSL {a : Type} (as : SymList a) : SymList a :=
   | ⟨xs, ys, ok⟩ =>
     if h : xs.isEmpty then
       match ys with
-      | [] => nilSL
-      |  _ => nilSL
+      | [] => nil
+      |  _ => nil
     else
       if h2 : xs.length = 1 then splitInTwoSL ys.reverse
       else (SymList.mk xs.tail ys (by
@@ -208,8 +248,8 @@ def initSL {a : Type} : (sl : SymList a) → SymList a
 | ⟨xs, ys, ok⟩ =>
   if h : ys.isEmpty then
     match xs with
-    | [] => nilSL
-    | _  => nilSL
+    | [] => nil
+    | _  => nil
   else
     if h2 : ys.length = 1 then splitInTwoSL xs
     else (SymList.mk xs ys.tail (by
@@ -228,9 +268,9 @@ example : ∀ (as : SymList α), fromSL (tailSL as) = tail (fromSL as) := by
   cases xs with
   | nil =>
     induction ys with
-    | nil => simp [tailSL, fromSL, nilSL]
+    | nil => simp [tailSL, fromSL, nil]
     | cons b bs ih =>
-      simp [fromSL, tailSL, nilSL]
+      simp [fromSL, tailSL, nil]
       simp [ok] at *
       rw [ok]
       rw [List.reverse_nil, List.nil_append, List.tail]
@@ -251,102 +291,66 @@ theorem length_sl_eq_length (xs : List a)
   simp [splitInTwoSL, lengthSL]
   omega
 
-theorem length_init_lt_length (sl : SymList a) (h : sl ≠ nilSL)
+theorem length_init_lt_length (sl : SymList a) (h : sl ≠ nil)
  : lengthSL sl > lengthSL (initSL sl) := by
-  have ⟨lsl, rsl, _⟩ := sl
+  have ⟨lsl, rsl, h₁⟩ := sl
   unfold lengthSL initSL
-  simp
-  simp [nilSL] at h
-  by_cases hr: rsl = [] <;> simp [hr]
-  by_cases hl: lsl = [] <;> simp [hl]
-  have := h hl
-  contradiction
-  simp [nilSL]
-  simp [<-List.length_eq_zero_iff] at hl
-  omega
-  by_cases hr2: rsl.length = 1 <;> simp [hr2]
-  rw [<-lengthSL]
-  simp [length_sl_eq_length]
-  refine @Nat.sub_one_lt_of_lt rsl.length 0 (by
-    simp [<-List.length_eq_zero_iff] at hr
-    omega
-  )
+  sorry
 
 theorem length_tail_lt_length (sl : SymList a) (h : sl ≠ nilSL)
  : lengthSL sl > lengthSL (tailSL sl) := by
   have ⟨lsl, rsl, _⟩ := sl
   unfold lengthSL tailSL
-  simp
-  simp [nilSL] at h
-  by_cases hr: rsl = [] <;> (simp [hr]; by_cases hl: lsl = [] <;> simp [hl])
-  have := h hl
-  contradiction
-  by_cases hl2: lsl.length = 1 <;> simp [hl2]
-  simp [splitInTwoSL]
-  refine @Nat.sub_one_lt_of_lt lsl.length 0 (by
-    have : lsl.length ≠ 0 := by simp [hl]
-    omega
-  )
-  exact List.length_lt_of_drop_ne_nil (h hl)
-  by_cases hl2: lsl.length = 1 <;> simp [hl2]
-  rw [<-lengthSL]
-  rw [length_sl_eq_length]
-  simp
-  refine @Nat.sub_one_lt_of_lt lsl.length 0 (by
-    have : lsl.length ≠ 0 := by simp [hl]
-    omega
-  )
+  sorry
 
 def initsSL (sl : SymList a) : SymList (SymList a) :=
-  if h: nullSL sl
-  then snocSL sl nilSL
+  if h : isEmpty sl then
+   snocSL sl nil
   else
     have : lengthSL (initSL sl) < lengthSL sl := length_init_lt_length sl (by
       have ⟨lsl, rsl, _⟩ := sl
-      simp [nullSL] at h
-      simp [nilSL]
+      simp [isEmpty] at h
+      simp [nil]
       exact h
     )
     snocSL sl (initsSL (initSL sl))
+ termination_by lengthSL sl
 
-  termination_by lengthSL sl
-
-theorem headSL_none_iff_nilSL: headSL sl = none ↔ sl = nilSL := by
+theorem headSL_none_iff_nilSL {sl : SymList a} : headSL sl = none ↔ sl = nil := by
   apply Iff.intro <;> intro h
   unfold headSL at h
   split at h
-  unfold nilSL
+  unfold nil
   exact rfl
   repeat simp [eq_comm, <-Option.isNone_iff_eq_none] at h
-
   rw [h]
-  unfold headSL nilSL
+  unfold headSL nil
   simp
 
-theorem lengthSL_zero_iff_nilSL: lengthSL sl = 0 ↔ sl = nilSL := by
+theorem lengthSL_zero_iff_nilSL: lengthSL sl = 0 ↔ sl = nil := by
   apply Iff.intro <;> intro h
   rw [lengthSL] at h
   rw [Nat.add_eq_zero_iff] at h
   repeat rw [List.length_eq_zero_iff] at h
-  unfold nilSL
+  unfold nil
   have ⟨h1, h2⟩ := h
   have ⟨lhs, rhs, ok⟩ := sl
   simp at h1 h2
   simp [h1, h2]
   rw [h]
-  unfold nilSL lengthSL
+  unfold nil lengthSL
   simp
 
 def dropWhileSL (p : a → Bool) (sl : SymList a) : SymList a :=
-  if sl.lhs.isEmpty ∧ sl.rhs.isEmpty then nilSL else
+  if sl.lhs.isEmpty ∧ sl.rhs.isEmpty then nil else
     match h: headSL sl with
-    | none => nilSL
+    | none => nil
     | some hsl =>
       if p hsl then
         let tl := tailSL sl
         have : lengthSL (tailSL sl) < lengthSL sl := length_tail_lt_length sl (by
-          if h2: sl = nilSL then
-            rw [<-headSL_none_iff_nilSL] at h2
+          if h2: sl = nil then
+            rw [← headSL_none_iff_nilSL] at h2
             rw [h2] at h
             contradiction
           else
@@ -355,8 +359,6 @@ def dropWhileSL (p : a → Bool) (sl : SymList a) : SymList a :=
         dropWhileSL p tl
       else sl
   termination_by lengthSL sl
-
-
 
 
 example {a : Type} : List.head? ∘ fromSL = @headSL a := by
@@ -374,22 +376,6 @@ example {a : Type} : List.head? ∘ fromSL = @headSL a := by
   simp [ok]
 
 
-example {a : Type} : List.getLast? ∘ fromSL = @lastSL a := by
-  funext sl
-  have ⟨lhs, rhs, ok⟩ := sl
-  simp [Function.comp, lastSL, fromSL]
-  split <;> rename_i h
-  rw [List.isEmpty_iff] at h
-  subst h
-  simp at ok ⊢
-  apply ok.elim <;> intro h2
-  simp [h2]
-  have y :: [] := lhs
-  simp
-  have z :: _ := rhs
-  simp
-
-
 example {a : Type} : List.dropLast ∘ fromSL = fromSL ∘ @initSL a := by
   funext sl
   have ⟨lhs, rhs, ok⟩ := sl
@@ -400,14 +386,14 @@ example {a : Type} : List.dropLast ∘ fromSL = fromSL ∘ @initSL a := by
   simp at ok
   . by_cases hr: rhs = []
     . subst hr
-      simp [initSL, nilSL]
+      simp [initSL, nil]
     . have _ :: [] := rhs
       simp [initSL, splitInTwoSL]
   . by_cases hr: rhs = []
     . subst hr
       simp [hl] at ok
       have _ :: [] := lhs
-      simp [initSL, nilSL]
+      simp [initSL, nil]
     . match hc: lhs ++ rhs.reverse with
       | [] =>
         rw [List.append_eq_nil_iff] at hc

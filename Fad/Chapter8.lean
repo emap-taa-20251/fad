@@ -178,7 +178,7 @@ end S1
 namespace S2
 open S1 (Tree Forest)
 open Chapter1 (concatMap wrap unwrap unwrap! single until' single picks apply)
-open Chapter3.SL2 (SymList nilSL singleSL headSL headSL! snocSL nullSL tailSL)
+open Chapter3.SL2 (SymList nil singleSL headSL headSL! snocSL isEmpty tailSL)
 
 def depths : Tree a → List Nat :=
  let rec frm (n : Nat) : Tree a → List Nat
@@ -259,7 +259,7 @@ def node : Pair → Pair → Pair
  | (t₁, w₁), (t₂, w₂) => (Tree.node t₁ t₂, w₁ + w₂)
 
 def makeSQ (xs : List Pair) : SQ Pair :=
-  (xs, nilSL)
+  (xs, nil)
 
 def singleSQ (sq : SQ a) : Bool :=
   sq.1.isEmpty ∧ singleSL sq.2
@@ -270,7 +270,7 @@ def extractSQ (sq : SQ Pair) : Tree Elem :=
 
 def extractMin (ps : SQ Pair) : Pair × SQ Pair :=
   let (xs, ys) := ps
-  if nullSL ys then
+  if isEmpty ys then
    (xs.head!, (xs.tail, ys))
   else if xs.isEmpty then
    (headSL! ys, (xs, tailSL ys))
