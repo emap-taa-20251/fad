@@ -49,19 +49,57 @@ def sum : List Nat → Nat :=
 
 Try to give meaningful names to your theorems. Use `sorry` as the proof. -/
 
-example : sum (snoc ms n) = n + sum ms := by
+theorem sum_snoc (ms : List Nat) (n : Nat) :
+  sum (snoc ms n) = n + sum ms := by
   unfold sum
   induction ms with
   | nil =>
-    simp [snoc]
+    simp [snoc, sum]
   | cons m ms ih =>
-    simp [snoc, ih]
-    exact Nat.add_left_comm m n (List.foldr (fun n acc => n + acc) 0 ms)
-    done
+    simp[snoc, ih]
+    rw [<- Nat.add_assoc, Nat.add_comm m n, Nat.add_assoc]
 
-example : sum (ms ++ ns) = sum ms + sum ns := sorry
+-- sum (ms ++ ns) = sum ms + sum ns --
 
-example : sum ns.reverse = sum ns := sorry
+theorem foldr_append (f : α → β → β) (e : β) (xs ys : List α) :
+  List.foldr f e (xs ++ ys) = List.foldr f (List.foldr f e ys) xs := by
+  induction xs with
+  | nil => simp [List.foldr]
+  | cons x xs hd => simp [List.foldr]
+
+theorem sum_append (ms ns : List Nat) :
+  sum (ms ++ ns) = sum ms + sum ns := by
+  unfold sum
+  induction ms with
+  | nil =>
+    simp [sum, List.foldr]
+  | cons m ms ih =>
+    simp[sum]
+    rw [<- foldr_append, ih, Nat.add_assoc]
+
+-- sum (reverse ns) = sum ns --
+
+theorem snoc_eq_append (xs : List Nat) (x : Nat) :
+  snoc xs x = xs ++ [x] := by
+  induction xs with
+  | nil => simp [snoc]
+  | cons y ys ih =>
+    simp [snoc]
+    exact ih
+
+theorem sum_cons (n : Nat) (ns : List Nat) :
+  sum (n :: ns) = n + sum ns := by
+  unfold sum
+  simp [List.foldr]
+
+theorem sum_reverse (ns : List Nat) :
+  sum (ns.reverse) = sum ns := by
+  induction ns with
+  | nil => simp [sum]
+  | cons n ns ih =>
+    rw [List.reverse_cons]
+    rw [<- snoc_eq_append, sum_snoc, sum_cons, ih]
+
 
 /- ## Question L.3
 
