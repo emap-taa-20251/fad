@@ -113,17 +113,22 @@ namespace SymList
 
 theorem length_lt_length_init {a : Type}
  (sl : SymList a) (h : sl ≠ nil)
- : lengthSL sl > lengthSL sl.initSL := by
+ : sl.lengthSL > sl.initSL.lengthSL := by
  have ⟨xs, ys, h₁⟩ := sl
- cases xs with
+ induction xs with
  | nil =>
    cases ys with
-   | nil =>
-     simp [lengthSL] ; contradiction
+   | nil => contradiction
    | cons b bs =>
-     simp [lengthSL]
-     sorry
-  | cons b bs => sorry
+     have h₂ := h₁.1 ; simp at h₂
+     simp [lengthSL, initSL, h₂, splitInTwoSL]
+ | cons b bs ih₁ =>
+   induction ys with
+   | nil =>
+     have h₂ := h₁.2 ; simp at h₂
+     simp [lengthSL, initSL, h₂, nil]
+   | cons n ns ih₂ => sorry
+
 
 def initsSL {a : Type} (sl : SymList a) : SymList (SymList a) :=
   if h : sl.isEmpty then
