@@ -111,30 +111,26 @@ end SL1
 
 namespace SymList
 
-#eval SymList.mk [1,2] [3] (by simp) |>.fromSL
-
-
-theorem length_init_lt_length {a : Type}
+theorem length_lt_length_init {a : Type}
  (sl : SymList a) (h : sl ≠ nil)
- : lengthSL sl > lengthSL (initSL sl) := by
+ : lengthSL sl > lengthSL sl.initSL := by
  have ⟨xs, ys, h₁⟩ := sl
- induction xs with
+ cases xs with
  | nil =>
-   simp at *
    cases ys with
    | nil =>
-     simp [lengthSL] ; apply h
-     contradiction
-   | cons b bs => sorry
-  | cons b bs ih => sorry
-
+     simp [lengthSL] ; contradiction
+   | cons b bs =>
+     simp [lengthSL]
+     sorry
+  | cons b bs => sorry
 
 def initsSL {a : Type} (sl : SymList a) : SymList (SymList a) :=
   if h : sl.isEmpty then
    nil.snocSL sl
   else
     have : (initSL sl).lengthSL <  sl.lengthSL :=
-      length_init_lt_length sl (by
+      length_lt_length_init sl (by
        have ⟨lsl, rsl, _⟩ := sl
        simp [isEmpty] at h
        simp [nil]
@@ -147,8 +143,8 @@ end SymList
 
 /- # Exercicio 3.7 -/
 
-def inits {α : Type} (xs : List α) : List (List α) :=
- ((List.map List.reverse) ∘ (Chapter1.scanl (flip List.cons) [])) xs
+def inits {α : Type} : List α → List (List α) :=
+ (List.map List.reverse ∘ (Chapter1.scanl (flip List.cons) []))
 
 
 /- # Exercicio 3.8  -/
@@ -297,7 +293,7 @@ def accum : (e → v → e) → Array e → List (Nat × v) → Array e
 -- #eval accum (λ a b => a + b) (List.range 5).toArray [(1,10), (1,10), (3,10)]
 
 def accumArray₁ (f : a → v → a) (e : a) (n : Nat) (is : List (Nat × v)) : Array a :=
- accum f (Array.mkArray n e) is
+ accum f (Array.replicate n e) is
 
 -- #eval accumArray₁ (λ a b => a + b) 0 5 [(1,10), (1,10), (3,10)]
 
