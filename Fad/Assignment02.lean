@@ -98,7 +98,7 @@ theorem sum_reverse (ns : List Nat) :
   | nil => simp [sum]
   | cons n ns ih =>
     rw [List.reverse_cons]
-    rw [<- snoc_eq_append, sum_snoc, sum_cons, ih]
+    rw [← snoc_eq_append, sum_snoc, sum_cons, ih]
 
 
 /- ## Question L.3
