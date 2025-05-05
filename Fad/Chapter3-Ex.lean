@@ -49,18 +49,29 @@ def headSL? {α : Type} : SymList α → Option α
 
 end SL1
 
-/- # Exercicio 3.4 -/
+-- # Exercicio 3.4
 
-namespace SL1
+namespace SymList
 
-def initSL {α : Type} : SymList α → Option (SymList α)
- | (xs, [])  => if xs.isEmpty then none else some nilSL
- | (xs, [_]) =>
-   let (us, vs) := xs.splitAt (xs.length / 2)
-   some (us, vs.reverse)
- | (xs, _ :: ys)  => some (xs, ys)
+def initSL {a : Type} : (sl : SymList a) → SymList a
+| ⟨xs, ys, ok⟩ =>
+  if h : ys.isEmpty then
+    match xs with
+    | [] => nil
+    | _  => nil
+  else
+    if h2 : ys.length = 1 then
+     splitInTwoSL xs
+    else (SymList.mk xs ys.tail (by
+      simp [← not_congr List.length_eq_zero_iff] at h
+      apply And.intro
+      all_goals
+       intro h3
+       simp [h3] at ok
+       have b :: [] := ys;
+       contradiction))
 
-end SL1
+end SymList
 
 /- # Exercicio 3.5 -/
 
@@ -98,18 +109,41 @@ end SL1
 
 /- # Exercicio 3.6 -/
 
-namespace SL1
+namespace SymList
 
-partial def initsSL {a : Type} (xs : SymList a) : SymList (SymList a) :=
- if nullSL xs then
-  snocSL xs nilSL
- else
-  match (initSL xs) with
-  | none => nilSL
-  | some i => snocSL xs (initsSL i)
+#eval SymList.mk [1,2] [3] (by simp) |>.fromSL
 
 
-end SL1
+theorem length_init_lt_length {a : Type}
+ (sl : SymList a) (h : sl ≠ nil)
+ : lengthSL sl > lengthSL (initSL sl) := by
+ have ⟨xs, ys, h₁⟩ := sl
+ induction xs with
+ | nil =>
+   simp at *
+   cases ys with
+   | nil =>
+     simp [lengthSL] ; apply h
+     contradiction
+   | cons b bs => sorry
+  | cons b bs ih => sorry
+
+
+def initsSL {a : Type} (sl : SymList a) : SymList (SymList a) :=
+  if h : sl.isEmpty then
+   nil.snocSL sl
+  else
+    have : (initSL sl).lengthSL <  sl.lengthSL :=
+      length_init_lt_length sl (by
+       have ⟨lsl, rsl, _⟩ := sl
+       simp [isEmpty] at h
+       simp [nil]
+       exact h
+    )
+    snocSL sl (initsSL (initSL sl))
+ termination_by sl.lengthSL
+
+end SymList
 
 /- # Exercicio 3.7 -/
 

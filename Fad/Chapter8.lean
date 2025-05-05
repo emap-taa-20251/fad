@@ -178,7 +178,8 @@ end S1
 namespace S2
 open S1 (Tree Forest)
 open Chapter1 (concatMap wrap unwrap unwrap! single until' single picks apply)
-open Chapter3.SL2 (SymList nil singleSL headSL headSL! snocSL isEmpty tailSL)
+open Chapter3.SymList (nil singleSL headSL headSL! snocSL isEmpty tailSL)
+
 
 def depths : Tree a → List Nat :=
  let rec frm (n : Nat) : Tree a → List Nat
@@ -247,7 +248,7 @@ def huffman₁ (es : List Elem) : Tree Elem :=
 
 /- linear time version -/
 
-abbrev Queue (α : Type) := SymList α
+abbrev Queue (α : Type) := Chapter3.SymList α
 abbrev Stack (α : Type) := List α
 abbrev SQ (α : Type)    := Stack α × Queue α
 abbrev Pair             := Tree Elem × Weight
