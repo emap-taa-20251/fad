@@ -127,7 +127,9 @@ theorem length_lt_length_init {a : Type}
    | nil =>
      have h₂ := h₁.2 ; simp at h₂
      simp [lengthSL, initSL, h₂, nil]
-   | cons n ns ih₂ => sorry
+   | cons n ns ih₂ =>
+     simp at ih₁ ih₂
+     simp [lengthSL, initSL]; sorry
 
 
 def initsSL {a : Type} (sl : SymList a) : SymList (SymList a) :=
@@ -139,8 +141,7 @@ def initsSL {a : Type} (sl : SymList a) : SymList (SymList a) :=
        have ⟨lsl, rsl, _⟩ := sl
        simp [isEmpty] at h
        simp [nil]
-       exact h
-    )
+       exact h)
     snocSL sl (initsSL (initSL sl))
  termination_by sl.lengthSL
 
