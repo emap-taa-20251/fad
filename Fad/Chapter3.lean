@@ -412,6 +412,84 @@ def inits₂ {a : Type} : List a → List (List a) :=
  List.map SymList.fromSL ∘ List.scanl (flip SymList.snocSL) SymList.nil
 
 
+/- trying to prove inits₁ = inits₂ -/
+
+theorem tails_append_singleton (xs : List α) (x : α) :
+    (xs ++ [x]).tails = xs.tails.map (fun ys => ys ++ [x]) ++ [[]] := by
+  induction xs with
+  | nil      => simp
+  | cons y ys ih =>
+      simp [List.tails, ih, List.map_append]
+
+theorem map_reverse_tails_snoc (x : α) (xs : List α) :
+    List.map reverse (snoc x xs).tails =
+      List.map (fun ys : List α => x :: reverse ys) xs.tails ++ [[]] := by
+  simp [snoc, tails_append_singleton, List.map_append, List.map_map, Function.comp]
+
+theorem map_reverse (f : α → β) (xs : List α) :
+    List.map f xs.reverse = (List.map f xs).reverse := by
+  induction xs
+  all_goals
+  simp
+
+theorem scanl_cons {α β}
+        (f : β → α → β) (b : β) (a : α) (as : List α) :
+    List.scanl f b (a :: as) = b :: List.scanl f (f b a) as := rfl
+
+theorem fromSL_snoc {α} (z : α) (sl : SymList α) :
+    SymList.fromSL (SymList.snocSL z sl) = SymList.fromSL sl ++ [z] := by
+  cases sl with
+  | mk lhs rhs ok =>
+      cases lhs with
+      | nil =>
+          cases rhs with
+          | nil =>
+              unfold SymList.fromSL
+              unfold SymList.snocSL
+              simp
+          | cons y ys =>
+              cases ys with
+              | nil =>
+                  unfold SymList.fromSL
+                  unfold SymList.snocSL
+                  simp
+              | cons z zs =>
+                  have hFalse : False := by
+                    have h := (ok.left) (by simp)
+                    cases h with
+                    | inl h0 =>
+                        simp at h0
+                    | inr hlen1 =>
+                        have : (List.length (y :: z :: zs)) = 1 := by
+                          simp at hlen1
+                        simp at this
+                  cases hFalse
+      | cons a as =>
+          simp [SymList.snocSL, SymList.fromSL, List.reverse_cons, List.append_assoc]
+
+theorem fromSL_nil :
+  SymList.fromSL (SymList.nil : SymList α) = [] := by
+    unfold SymList.nil
+    unfold SymList.fromSL
+    simp
+
+theorem inits₁_eq_inits₂ {α} :
+    ∀ xs : List α, inits₁ xs = inits₂ xs
+  | []      => by
+    unfold inits₁
+    unfold inits₂
+    simp [fromSL_nil]
+  | x :: xs => by
+      have ih := inits₁_eq_inits₂ xs
+      simp [ inits₁, inits₂,
+            List.reverse_cons,
+            map_reverse_tails_snoc,
+            scanl_cons, fromSL_snoc, ih,
+            Function.comp, flip, map_reverse,
+            fromSL_nil] at *
+      sorry
+
+
 -- # Section 3.2 Random-access lists
 
 def fetch {a : Type} : Nat → List a → Option a
