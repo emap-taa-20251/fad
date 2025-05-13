@@ -62,14 +62,15 @@ def initSL {a : Type} : (sl : SymList a) → SymList a
   else
     if h2 : ys.length = 1 then
      splitInTwoSL xs
-    else (SymList.mk xs ys.tail (by
+    else SymList.mk xs ys.tail (by
       simp [← not_congr List.length_eq_zero_iff] at h
       apply And.intro
       all_goals
        intro h3
        simp [h3] at ok
-       have b :: [] := ys
-       contradiction))
+       cases ys with
+       | nil => contradiction
+       | cons b bs => simp_all)
 
 end SymList
 

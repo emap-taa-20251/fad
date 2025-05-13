@@ -31,7 +31,7 @@ def search₂ (f : Nat → Nat) (t : Nat) : List Nat :=
     seek a (m - 1)
   else
     seek (m + 1) b
- termination_by (b - a)
+ termination_by (b - a) -- see https://tinyurl.com/57szywn5
  seek 0 t
 
 #eval search₂ (λ a => a * a) 1024
