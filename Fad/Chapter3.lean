@@ -463,27 +463,19 @@ theorem fromSL_snoc {α} (z : α) (sl : SymList α) :
       | cons a as =>
           simp [SymList.snocSL, SymList.fromSL, List.reverse_cons, List.append_assoc]
 
-theorem fromSL_nil :
-  SymList.fromSL (SymList.nil : SymList α) = [] := by
-    unfold SymList.nil
-    unfold SymList.fromSL
-    simp
 
-theorem inits₁_eq_inits₂ {α} :
-    ∀ xs : List α, inits₁ xs = inits₂ xs
-  | []      => by
-    unfold inits₁
-    unfold inits₂
-    simp [fromSL_nil]
+theorem inits_eq {a : Type} : ∀ xs : List a, inits₁ xs = inits₂ xs
+  | [] => by
+    unfold inits₁ inits₂ SymList.fromSL SymList.nil
+    simp
   | x :: xs => by
-      have ih := inits₁_eq_inits₂ xs
-      simp [ inits₁, inits₂,
+    have ih := inits_eq xs
+    simp [ inits₁, inits₂,
             List.reverse_cons,
             map_reverse_tails_snoc,
             scanl_cons, fromSL_snoc, ih,
-            Function.comp, flip, map_reverse,
-            fromSL_nil] at *
-      sorry
+            Function.comp, flip, map_reverse] at *
+    sorry
 
 
 -- # Section 3.2 Random-access lists
