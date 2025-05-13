@@ -34,7 +34,7 @@ def search₂ (f : Nat → Nat) (t : Nat) : List Nat :=
  termination_by (b - a) -- see https://tinyurl.com/57szywn5
  seek 0 t
 
-#eval search₂ (λ a => a * a) 1024
+-- #eval search₂ (λ a => dbg_trace "f {a}"; a * a) 100000000
 
 def bound (f : Nat → Nat) (t : Nat) : (Int × Nat) :=
   if t ≤ f 0 then (-1, 0) else (b / 2, b)
