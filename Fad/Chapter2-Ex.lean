@@ -5,23 +5,22 @@ namespace Chapter2
 open Chapter1
 
 
--- 2.9
+-- # Exercicio 2.9
 
 def op1 {a : Type} : (List a) → a → a
 | [], y => y
 | (x::_), _ => x
 
-example {xss : List (List α)} {e : α} (h : (concat₁ xss) ≠ []) :
-  List.head (concat₁ xss) h = foldr op1 e xss:= by
+example {xss : List (List α)} {e : α} (h : (concat₁ xss) ≠ [])
+  : List.head (concat₁ xss) h = foldr op1 e xss:= by
     induction xss with
     | nil => contradiction
     | cons xs xss ih =>
       cases xs with
       | nil => simp [concat₁, List.head, foldr, op1]; exact ih h
-      | cons x xs => sorry -- simp [concat₁, List.head, foldr, op1]
+      | cons x xs => simp [concat₁, List.head, foldr, op1]
 
-
--- 2.12
+-- # Exercicio 2.12
 
 def inits (as : List a) : List (List a) :=
   let rec help (f : List a → List a) : List a → List (List a)

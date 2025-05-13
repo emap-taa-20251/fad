@@ -11,6 +11,7 @@ def search₀ (f : Nat → Nat) (t : Nat) : List Nat :=
  List.foldl (fun xs x => if t = f x then x :: xs else xs) []
   (List.range <| t + 1)
 
+
 def search₁ (f : Nat → Nat) (t : Nat) : List Nat :=
   seek (0, t)
  where
@@ -22,20 +23,18 @@ def search₁ (f : Nat → Nat) (t : Nat) : List Nat :=
 def search₂ (f : Nat → Nat) (t : Nat) : List Nat :=
  let rec seek (a b : Nat) : List Nat :=
   let m := (a + b) / 2
-   if h₁ : a > b then  []
-   else if h₂ : t < f m then
-    have : (a + b) / 2 - 1 - a < b - a := by
-     rw [Nat.not_gt_eq] at h₁
-     sorry
+  if      h₁ : a = b   then
+   if t = f m then [m] else []
+  else if h₉ : a > b   then []
+  else if h₂ : t = f m then [m]
+  else if h₃ : t < f m then
     seek a (m - 1)
-   else if h₃ : t = f m then [m]
-   else
-    have : b - ((a + b) / 2 + 1) < b - a := by
-     sorry
+  else
     seek (m + 1) b
  termination_by (b - a)
  seek 0 t
 
+#eval search₂ (λ a => a * a) 1024
 
 def bound (f : Nat → Nat) (t : Nat) : (Int × Nat) :=
   if t ≤ f 0 then (-1, 0) else (b / 2, b)
@@ -59,10 +58,12 @@ partial def search₃ (f : Nat → Nat) (t : Nat) : List Nat :=
  where
   x := smallest f t (bound f t)
 
--- #eval bound (fun x => dbg_trace "fun {x}"; x * x) 1024
--- #eval search₁ (fun x => dbg_trace "fun {x}"; x * x) 1024
--- #eval search₂ (fun x => dbg_trace "fun {x}"; x * x) 2025
--- #eval search₃ (fun x => dbg_trace "fun {x}"; x * x) 2025
+/-
+#eval bound (fun x => dbg_trace "fun {x}"; x * x) 1024
+#eval search₁ (fun x => dbg_trace "fun {x}"; x * x) 1024
+#eval search₂ (fun x => dbg_trace "fun {x}"; x * x) 1048576
+#eval search₃ (fun x => dbg_trace "fun {x}"; x * x) 1048576
+-/
 
 end D1
 
@@ -309,11 +310,11 @@ def balanceR (t₁ : Tree α) (x : α) (t₂ : Tree α) : Tree α :=
 end BST2
 
 namespace DSet
-open BST2 (Tree insert node)
+open BST2 (insert node)
 
-abbrev Set a := Tree a
+abbrev Set a := BST2.Tree a
 
-def member [LT a] [DecidableRel (α := a) (· < ·)] (x : a) : Set a → Bool
+def member {a : Type} [LT a] [DecidableRel (α := a) (· < ·)] (x : a) : Set a → Bool
 | .null => false
 | .node _ l y r =>
   if x < y      then member x l

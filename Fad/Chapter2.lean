@@ -47,7 +47,7 @@ def concat₀ : List (List a) → List a
  | (xs :: xss) => xs ++ concat₀ xss
 
 def concat₁ (xss : List (List a)) : List a :=
- dbg_trace "concat₁ with {xss.length}"
+ -- dbg_trace "concat₁ with {xss.length}"
  match xss with
   | [] => []
   | (xs :: xss) => xs ++ concat₁ xss

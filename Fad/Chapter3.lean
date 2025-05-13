@@ -5,7 +5,7 @@ namespace Chapter3
 
 open List (reverse tail cons)
 
-/- # Section 3.1 Symmetric lists -/
+-- # Section 3.1 Symmetric lists
 
 def _root_.List.single (xs : List α) : Bool := xs.length = 1
 
@@ -221,34 +221,30 @@ def lengthSL (sl : SymList a) : Nat :=
 
 
 /- subtipos -/
-def p (h : List Nat) : Prop := h.length = 3
-
-def test₁ := (@Subtype.mk _ p [1,2,3] (by simp [p]))
-def test₂ := (Subtype.mk [1,2,3] (by rfl : p [1,2,3]) )
 
 def splitInTwoSL (xs : List a) : SymList a :=
   let p := List.MergeSort.Internal.splitInTwo (Subtype.mk xs (by rfl))
-  SymList.mk p.1 p.2.val.reverse (by
+  SymList.mk p.1.val p.2.val.reverse (by
     have ⟨⟨as, aok⟩, ⟨bs, bok⟩⟩ := p
     simp [aok, bok]
-    apply And.intro <;> (intro h; simp [h] at bok aok)
+    apply And.intro <;>
+     (intro h; simp [h] at bok aok)
     if h2: bs.length = 0 then simp at h2; simp [h2] else omega
     if h2: as.length = 0 then simp at h2; simp [h2] else omega)
 
 def tailSL {a : Type} (as : SymList a) : SymList a :=
   match as with
   | ⟨xs, ys, ok⟩ =>
-    if h : xs.isEmpty then
-      match ys with
-      | [] => nil
-      |  _ => nil
+    if h : xs.isEmpty then nil
     else
-      if h2 : xs.length = 1 then splitInTwoSL ys.reverse
-      else (SymList.mk xs.tail ys (by
-        simp [← not_congr List.length_eq_zero_iff] at h
-        apply And.intro <;> (intro h3; have k :: (l :: ms) := xs)
-        repeat simp [ok] at *))
-
+      if h2 : xs.length = 1 then
+        splitInTwoSL ys.reverse
+      else
+        SymList.mk xs.tail ys (by
+         simp [← not_congr List.length_eq_zero_iff] at h
+         apply And.intro
+         all_goals intro h3; have k :: (l :: ms) := xs
+         repeat simp [ok] at *)
 
 example : ∀ (as : SymList a), fromSL (tailSL as) = tail (fromSL as) := by
   intro sl
@@ -423,7 +419,6 @@ def fetch {a : Type} : Nat → List a → Option a
 #eval fetch 2 [1,2,3,4]
 -/
 
-
 inductive Tree (α : Type) : Type where
  | leaf (n : α) : Tree α
  | node (n : Nat) (t₁ : Tree α) (t₂ : Tree α) : Tree α
@@ -460,7 +455,7 @@ def Digit.toString [ToString α] : Digit α → String
   | zero => "zero"
   | one t => s!"one ({t.toString})"
 
-instance [ToString α] : ToString (Digit α) where
+instance {α : Type} [ToString α] : ToString (Digit α) where
   toString := Digit.toString
 
 open Digit
@@ -519,7 +514,7 @@ def fetchRA [ToString a] (n : Nat) (ra : RAList a) : Option a :=
 
 def nilRA {a : Type} : RAList a := []
 
-def consRA (x : a) (xs : RAList a) : RAList a :=
+def consRA {a : Type} (x : a) (xs : RAList a) : RAList a :=
  consT (Tree.leaf x) xs
 where
  consT : Tree a → RAList a → RAList a
@@ -527,8 +522,9 @@ where
  | t1, Digit.zero :: xs => Digit.one t1 :: xs
  | t1, Digit.one t2 :: xs => Digit.zero :: consT (Tree.mk t1 t2) xs
 
+-- #eval [3,1,6,8,9,0,5] |>.foldl (λ a r => consRA r a) nilRA
 
-/- 3.3 Arrays : in Lean arrays can be from arbitrary indexes i to j -/
+/- # Section 3.3 Arrays -/
 
 def listArray (xs : List α) : Array α :=
   xs.toArray
@@ -539,5 +535,12 @@ def accumArray (f : α → β → α) (ini : α) (r : Nat)
     xs.filter (·.1 = i) |>.foldl (λ ac p ↦ f ac p.2) ini
  (List.range r).map helper |>.toArray
 
+/-
+#eval accumArray (· + ·) 0 4
+ [(1, 20),(1, 56),(1, 10),(1, 20), (2, 30), (1, 40), (2, 50)]
+
+#eval accumArray (flip List.cons) [] 3
+  [(0, "Apple"), (0, "Apricot")]
+-/
 
 end Chapter3

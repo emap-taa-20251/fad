@@ -68,7 +68,7 @@ def initSL {a : Type} : (sl : SymList a) → SymList a
       all_goals
        intro h3
        simp [h3] at ok
-       have b :: [] := ys;
+       have b :: [] := ys
        contradiction))
 
 end SymList
@@ -144,6 +144,7 @@ def initsSL {a : Type} (sl : SymList a) : SymList (SymList a) :=
        exact h)
     snocSL sl (initsSL (initSL sl))
  termination_by sl.lengthSL
+
 
 end SymList
 
