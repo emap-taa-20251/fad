@@ -23,11 +23,12 @@ def search₁ (f : Nat → Nat) (t : Nat) : List Nat :=
 def search₂ (f : Nat → Nat) (t : Nat) : List Nat :=
  let rec seek (a b : Nat) : List Nat :=
   let m := (a + b) / 2
+  let v := f m
   if      h₁ : a = b   then
-   if t = f m then [m] else []
+   if t = v then [m] else []
   else if h₉ : a > b   then []
-  else if h₂ : t = f m then [m]
-  else if h₃ : t < f m then
+  else if h₂ : t = v then [m]
+  else if h₃ : t < v then
     seek a (m - 1)
   else
     seek (m + 1) b
@@ -36,33 +37,37 @@ def search₂ (f : Nat → Nat) (t : Nat) : List Nat :=
 
 -- #eval search₂ (λ a => dbg_trace "f {a}"; a * a) 100000000
 
-def bound (f : Nat → Nat) (t : Nat) : (Int × Nat) :=
-  if t ≤ f 0 then (-1, 0) else (b / 2, b)
+def bound (f : Nat → Nat) (t : Nat) : (Nat × Nat) :=
+  if t ≤ f 0 then (0, 0) else (b / 2, b)
  where
   b := Chapter1.until' done (· * 2) 1
   done b := t ≤ f b
 
-partial def smallest (f : Nat → Nat) (t : Nat) : (Int × Nat) → Nat
-| (a, b) =>
-  let m := (a + b) / 2
-  if a + 1 = b then b
-  else
-   if t ≤ f m.toNat
-   then
-    smallest f t (a, m.toNat)
-   else
-    smallest f t (m, b)
+-- #eval bound (fun x => dbg_trace "fun {x}"; x + 10) 20
 
-partial def search₃ (f : Nat → Nat) (t : Nat) : List Nat :=
+def smallest (f : Nat → Nat) (t : Nat) (p : Nat × Nat) : Nat :=
+ match p with
+ | (a, b) =>
+   let m := (a + b) / 2
+   let v := f m
+   if      h₀ : a = b then b
+   else if h₁ : a > b then b
+   else if h₃ : t = v then m
+   else if h₂ : t < v then
+    smallest f t (a, m - 1)
+   else
+    smallest f t (m + 1, b)
+ termination_by (p.2 - p.1)
+
+def search₃ (f : Nat → Nat) (t : Nat) : List Nat :=
   if f x = t then [x] else []
  where
   x := smallest f t (bound f t)
 
 /-
-#eval bound (fun x => dbg_trace "fun {x}"; x * x) 1024
 #eval search₁ (fun x => dbg_trace "fun {x}"; x * x) 1024
 #eval search₂ (fun x => dbg_trace "fun {x}"; x * x) 1048576
-#eval search₃ (fun x => dbg_trace "fun {x}"; x * x) 1048576
+#eval search₃ (fun x => dbg_trace "fun {x}"; x ^ 3) 175616
 -/
 
 end D1

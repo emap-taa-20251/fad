@@ -112,7 +112,7 @@ Schematically:
 Try to give meaningful names to your theorems. Also, make sure to state the
 second property as generally as possible, for arbitrary types. -/
 
-example (xs : List a) : xs.map (fun x ↦ x) = xs := by
+theorem map_id {a : Type} (xs : List a) : xs.map (fun x ↦ x) = xs := by
   induction xs with
   | nil =>
     simp [List.map]
@@ -120,9 +120,14 @@ example (xs : List a) : xs.map (fun x ↦ x) = xs := by
     simp [List.map, ih]
     done
 
-example (xs : List a) (f : a → b) (g : b → c) :
-  xs.map (fun x ↦ g (f x)) = (xs.map f).map g := sorry
-
+theorem map_map {a b c : Type} (xs : List a) (f : a → b) (g : b → c) :
+  xs.map (fun x ↦ g (f x)) = (xs.map f).map g := by
+  funext
+  induction xs with
+  | nil => repeat rw [List.map_nil]
+  | cons a as ih =>
+    repeat rw [List.map_cons]
+    rw [ih]
 
 /- ## Question L.4 Arithmetic Expressions
 

@@ -276,12 +276,12 @@ theorem length_sl_eq_length (xs : List a)
   omega
 
 
-theorem length_tail_lt_length (sl : SymList a) (h : sl ≠ nilSL)
- : lengthSL sl > lengthSL (tailSL sl) := by
-  have ⟨lsl, rsl, _⟩ := sl
+theorem length_tail_lt_length (sl : SymList a) (h : sl ≠ nil)
+ : lengthSL sl ≥ lengthSL (tailSL sl) := by
+  have ⟨lsl, rsl, ok⟩ := sl
   unfold lengthSL tailSL
+  simp
   sorry
-
 
 theorem headSL_none_iff_nilSL {sl : SymList a} : headSL sl = none ↔ sl = nil := by
   apply Iff.intro <;> intro h
@@ -315,14 +315,14 @@ def dropWhileSL (p : a → Bool) (sl : SymList a) : SymList a :=
     | some hsl =>
       if p hsl then
         let tl := tailSL sl
-        have : lengthSL (tailSL sl) < lengthSL sl := length_tail_lt_length sl (by
+        have : lengthSL (tailSL sl) < lengthSL sl :=
+         length_tail_lt_length sl (by
           if h2: sl = nil then
             rw [← headSL_none_iff_nilSL] at h2
             rw [h2] at h
             contradiction
           else
-            exact h2
-        )
+            exact h2)
         dropWhileSL p tl
       else sl
   termination_by lengthSL sl
@@ -394,6 +394,7 @@ example (p : a → Bool)
   have ⟨lhs, rhs, ok⟩ := sl
   simp [Function.comp]
   sorry
+
 
 end SymList
 
