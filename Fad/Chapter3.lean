@@ -32,15 +32,15 @@ def consSL : α  → SymList α → SymList α
 | z, (xs, []) => ([z], xs)
 | z, (xs, ys) => (z :: xs, ys)
 
-example (x : α) (xs : SymList α)
- : (snoc x ∘ fromSL) xs = (fromSL ∘ snocSL x) xs
- := by
- have (as, bs) := xs
- unfold Function.comp snoc
- induction as generalizing bs with
- | nil =>
-   simp [snocSL, fromSL]; sorry
- | cons y ys ih => sorry
+example (x : α) (xs : SymList α) (h : xs.1 ≠ []) :
+  (snoc x ∘ fromSL) xs = (fromSL ∘ snocSL x) xs :=
+by
+  cases xs with
+  | mk as bs =>
+    cases as with
+    | nil => contradiction
+    | cons a as' =>
+      simp [fromSL, snoc, snocSL, List.reverse_cons, List.append_assoc]
 
 
 end SL1
