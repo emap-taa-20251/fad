@@ -1,6 +1,7 @@
 import Fad.Chapter1
 import Fad.«Chapter1-Ex»
 
+
 namespace Chapter3
 
 open List (reverse tail cons)
@@ -32,16 +33,20 @@ def consSL : α  → SymList α → SymList α
 | z, (xs, []) => ([z], xs)
 | z, (xs, ys) => (z :: xs, ys)
 
-example (x : α) (xs : SymList α)
+
+/-
+example (x : α) (xs : SymList α) 
  : (snoc x ∘ fromSL) xs = (fromSL ∘ snocSL x) xs
  := by
  have (as, bs) := xs
  unfold Function.comp snoc
  induction as generalizing bs with
- | nil =>
-   simp [snocSL, fromSL]; sorry
- | cons y ys ih => sorry
-
+ | nil => 
+   simp [fromSL, snocSL]; sorry
+ | cons y ys ih => 
+   simp [fromSL, snoc, snocSL, List.reverse_cons, 
+         List.append_assoc]
+-/
 
 end SL1
 

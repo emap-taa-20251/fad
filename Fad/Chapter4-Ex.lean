@@ -232,18 +232,18 @@ end BST2
 
 -- # Exercicio 4.17
 
-namespace DynamicSet
+namespace DSet
 open BST2
 
-abbrev Set (α : Type) : Type := Tree α
+def pair {α β : Type} (f : α -> β) (p : α × α) : (β × β) := (f p.1, f p.2)
 
-def pair (f : α -> β) (p : α × α) : (β × β) := (f p.1, f p.2)
-
-def split [LT α] [LE α] [DecidableRel (α := α) (· < ·)] [DecidableRel (α := α) (· ≤ ·)]
+def split {α : Type} [LT α] [LE α]
+  [DecidableRel (α := α) (· < ·)]
+  [DecidableRel (α := α) (· ≤ ·)]
   (x : α) : Set α → Set α × Set α :=
   pair mkTree ∘ List.partition (· ≤ x) ∘ Tree.flatten
 
 
-end DynamicSet
+end DSet
 
 end Chapter4

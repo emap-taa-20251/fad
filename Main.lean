@@ -1,6 +1,5 @@
 import Fad
 
-
 def readFile (filename : String) : IO (List Nat) := do
   let contents ← IO.FS.readFile filename
   let lines := contents.splitOn "\n"
