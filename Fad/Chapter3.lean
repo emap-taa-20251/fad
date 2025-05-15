@@ -277,7 +277,7 @@ theorem length_sl_eq_length (xs : List a)
 
 
 theorem length_tail_lt_length (sl : SymList a) (h : sl ≠ nil)
- : lengthSL sl ≥ lengthSL (tailSL sl) := by
+ : lengthSL sl > lengthSL (tailSL sl) := by
   have ⟨lsl, rsl, ok⟩ := sl
   unfold lengthSL tailSL
   simp

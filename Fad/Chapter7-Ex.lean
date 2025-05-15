@@ -109,11 +109,12 @@ namespace S73
    return the other `minimum`. -/
 
 def mktuples' : List Denom → Nat → List Tuple
-  | [1]  , n   => [[n]]
-  | []   , _   => panic! "mktuples: invalid empty list"
+  | [1]    , n => [[n]]
+  | []     , _ => panic! "mktuples: invalid empty list"
   | d :: ds, n =>
-    let rs := List.iota (n / d + 1) |>.map (· - 1)
-    rs.flatMap (λ c => mktuples₀ ds (n - c * d) |>.map (λ cs => c :: cs))
+    let rs := List.range (n / d + 1)
+    rs.flatMap (λ c => mktuples₀ ds (n - c * d) |>.map
+     (λ cs => c :: cs))
 
 def mkchange' (ds : List Denom) : Nat → Tuple :=
   minWith List.sum ∘ mktuples' ds

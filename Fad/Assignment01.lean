@@ -116,7 +116,7 @@ def product (ns : List Nat) : Nat :=
   | [] => 1
   | n :: ns => n * product ns
 
-#eval product [2, 3, 4] -- should be 24
+-- #eval product [2, 3, 4] -- should be 24
 
 
 end Assignment01

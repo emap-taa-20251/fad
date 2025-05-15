@@ -8,25 +8,24 @@ namespace Chapter4
 namespace D1
 
 def search₀ (f : Nat → Nat) (t : Nat) : List Nat :=
- List.foldl (fun xs x => if t = f x then x :: xs else xs) []
-  (List.range <| t + 1)
+ (List.range $ t + 1).filter (t = f ·)
 
+-- #eval search₀ (fun _ => 3) 3
 
 def search₁ (f : Nat → Nat) (t : Nat) : List Nat :=
   seek (0, t)
  where
-  acc xs x := if t = f x then x :: xs else xs
   seek : (Nat × Nat) → List Nat
-  | (a, b) => List.foldl acc [] <| List.range' a (b - a + 1)
+  | (a, b) => List.range' a (b - a + 1) |>.filter (t = f ·)
 
 
 def search₂ (f : Nat → Nat) (t : Nat) : List Nat :=
  let rec seek (a b : Nat) : List Nat :=
   let m := (a + b) / 2
   let v := f m
-  if      h₁ : a = b   then
+  if      h₁ : a = b then
    if t = v then [m] else []
-  else if h₉ : a > b   then []
+  else if h₉ : a > b then []
   else if h₂ : t = v then [m]
   else if h₃ : t < v then
     seek a (m - 1)
@@ -35,7 +34,7 @@ def search₂ (f : Nat → Nat) (t : Nat) : List Nat :=
  termination_by (b - a) -- see https://tinyurl.com/57szywn5
  seek 0 t
 
--- #eval search₂ (λ a => dbg_trace "f {a}"; a * a) 100000000
+-- #eval search₂ (λ a => dbg_trace "f {a}"; a * a) 1024
 
 def bound (f : Nat → Nat) (t : Nat) : (Nat × Nat) :=
   if t ≤ f 0 then (0, 0) else (b / 2, b)
@@ -43,7 +42,7 @@ def bound (f : Nat → Nat) (t : Nat) : (Nat × Nat) :=
   b := Chapter1.until' done (· * 2) 1
   done b := t ≤ f b
 
--- #eval bound (fun x => dbg_trace "fun {x}"; x + 10) 20
+-- #eval bound (fun x => dbg_trace "fun {x}"; x + 10) 10
 
 def smallest (f : Nat → Nat) (t : Nat) (p : Nat × Nat) : Nat :=
  match p with
@@ -54,7 +53,7 @@ def smallest (f : Nat → Nat) (t : Nat) (p : Nat × Nat) : Nat :=
    else if h₁ : a > b then b
    else if h₃ : t = v then m
    else if h₂ : t < v then
-    smallest f t (a, m - 1)
+    smallest f t (a, m)
    else
     smallest f t (m + 1, b)
  termination_by (p.2 - p.1)
@@ -111,6 +110,8 @@ where
 -- #eval search₁ (λ (x, y) => x^2 + 3^y) 20259
 
 
+-- BUG #eval helper 12 (λ (x, y) => x^2 + 3^y) (0, 12) (12,0)
+
 partial def helper (t : Nat) (f : Nat × Nat → Nat)
  : (Nat × Nat) → (Nat × Nat) → List (Nat × Nat)
  | (x₁, y₁), (x₂, y₂) =>
@@ -139,12 +140,9 @@ partial def helper (t : Nat) (f : Nat × Nat → Nat)
      helper t f (x₁, y₁) (c - 1, y) ++ helper t f (c + 1, y - 1) (x₂, y₂)
 
 partial def search₂ (f : Nat × Nat → Nat) (t : Nat) : List (Nat × Nat) :=
- let p := D1.smallest (λ y => f (0, y)) t (-1, t)
- let q := D1.smallest (λ x => f (x, 0)) t (-1, t)
+ let p := D1.smallest (λ y => f (0, y)) t (0, t)
+ let q := D1.smallest (λ x => f (x, 0)) t (0, t)
  helper t f (0, p) (q, 0)
-
-
--- BUG #eval helper 12 (λ (x, y) => x^2 + 3^y) (0, 12) (12,0)
 
 
 /- https://kmill.github.io/informalization/ucsc_cse_talk.pdf -/
@@ -174,6 +172,8 @@ end D2
 
 namespace BST1
 
+variable {α : Type}
+
 inductive Tree (α : Type) : Type
 | null : Tree α
 | node : (Tree α) → α → (Tree α) → Tree α
@@ -187,20 +187,19 @@ def Tree.toFormat [ToString α] : (t : Tree α) → Std.Format
   bracket "(" (f!"{x}" ++
    line ++ nest 2 t₁.toFormat ++ line ++ nest 2 t₂.toFormat) ")"
 
-instance [ToString a] : Repr (Tree a) where
- reprPrec e _ := Tree.toFormat e
+instance [ToString α] : Repr (Tree α) where
+ reprPrec e _ := e.toFormat
 
-def Tree.size : Tree a → Nat
+def Tree.size : Tree α → Nat
 | null => 0
 | node t₁ _ t₂ => 1 + t₁.size + t₂.size
 
-def Tree.flatten : Tree a → List a
+def Tree.flatten : Tree α → List α
 | null => []
 | node l x r => l.flatten ++ [x] ++ r.flatten
 
-
 def search (f : Nat → Nat) : Nat → Tree Nat → Option Nat
-| _, Tree.null => none
+| _, Tree.null       => none
 | k, Tree.node l x r =>
   if f x < k then
    search f k r
@@ -210,12 +209,13 @@ def search (f : Nat → Nat) : Nat → Tree Nat → Option Nat
    else
     search f k l
 
-def Tree.height : Tree a → Nat
+def Tree.height : Tree α → Nat
 | null => 0
 | node l _ r => 1 + (max l.height r.height)
 
 
-def mkTree : List Nat → Tree Nat
+def mkTree [LT α] [DecidableRel (α := α) (· < ·)]
+: List α → Tree α
 | [] => Tree.null
 | x :: xs =>
   let p := xs.partition (· < x)
@@ -224,11 +224,16 @@ def mkTree : List Nat → Tree Nat
  decreasing_by
   all_goals
    simp [List.partition_eq_filter_filter,
-         List.length_filter_le, Nat.lt_add_one_of_le]
+         List.length_filter_le,
+         Nat.lt_add_one_of_le]
+
 
 end BST1
 
+
 namespace BST2
+
+variable {α : Type}
 
 inductive Tree (α : Type) : Type
 | null : Tree α
@@ -243,14 +248,14 @@ def Tree.toFormat [ToString α] : (t : Tree α) → Std.Format
   bracket "(" (f!"{x}" ++
    line ++ nest 2 t₁.toFormat ++ line ++ nest 2 t₂.toFormat) ")"
 
-instance [ToString a] : Repr (Tree a) where
- reprPrec e _ := Tree.toFormat e
+instance [ToString α] : Repr (Tree α) where
+ reprPrec e _ := e.toFormat
 
-def Tree.height : (a : Tree α) -> Nat
- | Tree.null => 0
- | Tree.node x _ _ _ => x
+def Tree.height : Tree α → Nat
+ | .null => 0
+ | .node x _ _ _ => x
 
-def Tree.flatten : Tree a → List a
+def Tree.flatten : Tree α → List α
 | null => []
 | node _ l x r => l.flatten ++ [x] ++ r.flatten
 

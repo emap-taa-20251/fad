@@ -333,7 +333,7 @@ open Function (uncurry) in
 
 def csort (m : Nat) (xs : List Nat) : List Nat :=
   let a := Chapter3.accumArray Nat.add 0 m (xs.map (·, 1))
-  a.zipWithIndex.toList.flatMap (uncurry replicate)
+  a.zipIdx.toList.flatMap (uncurry replicate)
 
 
 /- # Exercicio 5.19 -/

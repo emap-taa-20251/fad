@@ -99,7 +99,7 @@ def minmax [Inhabited a] [LE a] [DecidableRel (α := a) (· ≤ ·)]
 
 def select₀ [Inhabited a] [LT a] [DecidableRel (α := a) (· < ·)]
  (k : Nat) (xs : List a) : a :=
- (qsort₁ xs).get! (k - 1)
+ (qsort₁ xs)[k - 1]!
 
 
 def median [Inhabited a] [LT a] [DecidableRel (α := a) (· < ·)]
@@ -120,7 +120,7 @@ partial def group [Inhabited a] (n : Nat) (xs : List a) : List (List a) :=
 def medians [Inhabited a] [LT a]
   [DecidableRel (α := a) (· < ·)] [DecidableRel (α := a) (· = ·)]
   : List a → List a :=
-  let middle (xs : List a) := xs.get! (((xs.length + 1) / 2) - 1)
+  let middle (xs : List a) := xs[((xs.length + 1) / 2) - 1]!
   List.map (middle ∘ qsort₁) ∘ group 5
 
 
@@ -152,7 +152,7 @@ partial def select [Inhabited a] [LT a]
     let m := us.length
     let n := vs.length
     if          k ≤ m then select k us
-    else if k ≤ m + n then vs.get! (k - m - 1)
+    else if k ≤ m + n then vs[k - m - 1]!
     else if k > m + n then select (k - m - n) ws
     else panic! "unreachable code"
 

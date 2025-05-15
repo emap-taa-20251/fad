@@ -17,6 +17,4 @@ def weight (e : Edge) : Weight := e.2.2
 abbrev AdjArray := Array (List (Vertex × Weight))
 
 
-
-
 end Chapter9
