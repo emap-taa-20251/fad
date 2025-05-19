@@ -3,13 +3,22 @@ import Fad.Chapter1
 
 namespace Assignment03
 
-def compress (s : String) : List (Nat × Nat) := sorry
+def compress (s : String) : List (Nat × Nat) :=
+  help (s.toList.map (·.toNat - '0'.toNat)) []
+ where
+  help : List Nat → List (Nat × Nat) → List (Nat × Nat)
+  | []     , acc      => acc.reverse
+  | x :: xs, []       => help xs [(x, 1)]
+  | x :: xs, p :: acc =>
+    if x = p.1
+    then help xs ((p.1, p.2 + 1) :: acc)
+    else help xs ((x, 1) :: p :: acc)
 
-/-
-#eval compress "1333332222211" -- returns [(1, 1), (3, 5), (2, 5), (1, 2)]
--/
+-- #eval compress "1333332222211" -- returns [(1, 1), (3, 5), (2, 5), (1, 2)]
 
-def uncompress : List (Nat × Nat) → String := sorry
+def uncompress : List (Nat × Nat) → String :=
+  let h (xs : List Nat) := xs.foldr (λ a r => s!"{a}{r}") ""
+  List.foldr (λ p r => h (List.replicate p.2 p.1) ++ r) ""
 
 /-
 #eval uncompress [(1, 1), (3, 5), (2, 5), (1, 2)] -- returns "1333332222211"
@@ -28,12 +37,6 @@ def SymList.reverse : SymList a → SymList a
 
 #eval List.toSL [1,2,3] |>.reverse |>.fromSL
 
-/- qual a complexidade de SymList.reverse? -/
-
-def answer₁ := "O(???)"
-
-/- tente completar a prova -/
-
 example : ∀ sl : SymList a,
   List.reverse sl.fromSL = sl.reverse.fromSL := sorry
 
@@ -44,24 +47,18 @@ da frente e as funções no elemento de trás, poderíamos definir as
 funções no elemento de trás em termos de reverse e das funções
 correspondentes no elemento da frente.
 
-Defina `init` como uma expressão usando outras funções sobre SymList
-sem recorrer as sublistas?
+Defina `init` como uma expressão usando `tailSL` e `SymList.reverse`?
 -/
 
-def SymList.init (q : SymList a) : SymList a := sorry
+def SymList.init (q : SymList a) : SymList a  :=
+  q.reverse.tailSL.reverse
 
 -- #eval [1,2,3].toSL |>.init |>.fromSL -- returns [1,2]
-
-
-/- qual a complexidade de SymList.init? -/
-
-def answer₂ := "O(???)"
 
 def List.init {α : Type} : List α → List α
   | []      => []
   | [_]     => []
   | x :: xs => x :: init xs
-
 
 /- agora tente completar a prova seguinte -/
 

@@ -201,8 +201,54 @@ the property that the value of `e` after simplification is the same as the
 value of `e` before. -/
 
 theorem simplify_correct (env : String → Int) (e : AExp)
- : eval env (simplify e) = eval env e := by sorry
-
+ : eval env (simplify e) = eval env e := by
+induction e with
+| num i =>
+  simp [simplify]
+| var x =>
+  simp [simplify]
+| add e₁ e₂ ih₁ ih₂ =>
+  if h₁: e₁ = AExp.num 0 then
+    rw [h₁]
+    simp [simplify, ih₂, eval]
+  else if h₂ : e₂ = AExp.num 0 then
+    rw [h₂]
+    simp [simplify, ih₁, eval]
+  else
+    simp [simplify, eval, ih₁, ih₂]
+| sub e₁ e₂ ih₁ ih₂ =>
+  if h₁: e₂ = AExp.num 0 then
+    rw [h₁]
+    simp [simplify, ih₁, eval]
+  else if h₂: e₁ = AExp.num 0 then
+    rw [h₂]
+    simp [simplify, ih₂, eval]
+  else
+    simp [simplify, eval, ih₁, ih₂]
+| mul e₁ e₂ ih₁ ih₂ =>
+  if h₁: e₁ = AExp.num 1 then
+    rw [h₁]
+    simp [simplify, eval, ih₂]
+  else if h₂ : e₂ = AExp.num 1 then
+    rw [h₂]
+    simp [simplify, eval, ih₁]
+  else if h₃ : e₂ = AExp.num 0 then
+    rw [h₃]
+    simp [simplify, eval]
+  else if h₄ : e₁ = AExp.num 0 then
+    rw [h₄]
+    simp [simplify, eval]
+  else
+    simp [simplify, eval, ih₁, ih₂]
+| div e₁ e₂ ih₁ ih₂ =>
+  if h₁ : e₂ = AExp.num 1 then
+    rw [h₁]
+    simp [simplify, eval, ih₁]
+  else if h₂ : e₁ = AExp.num 0 then
+    rw [h₂]
+    simp [simplify, eval]
+  else
+    simp [simplify, eval, ih₁, ih₂]
 
 
 end Assignment02
