@@ -1,5 +1,6 @@
 import Fad.Chapter1
 import Batteries
+import Mathlib
 
 namespace Chapter1
 
@@ -247,7 +248,6 @@ example {α β : Type} (f : α → β → β) (e : β) :
     simp [List.map, tails]
     rw [Function.comp] at ih
     rw [ih]
-    sorry
 
 
 /- # Exercicio 1.13 -/
@@ -305,8 +305,6 @@ def steep₀ (xs : List Nat) : Bool :=
   | []  => true
   | x :: xs => x > sum xs ∧ steep₀ xs
 
--- #eval steep₀ (List.iota 10000000)
-
 def steep₁ (xs : List Nat) : Bool :=
   let rec sum : List Nat → Nat → Nat
    | [], s => s
@@ -315,7 +313,7 @@ def steep₁ (xs : List Nat) : Bool :=
   | []  => true
   | x :: xs => x > sum xs 0 ∧ steep₁ xs
 
--- #eval steep₁ (List.iota 10000000)
+-- #eval steep₀ (List.range' 1 10000000).reverse
 
 def steep₂ : List Nat → Bool :=
  Prod.snd ∘ faststeep
@@ -326,7 +324,7 @@ def steep₂ : List Nat → Bool :=
     let (s, b) := faststeep xs
     (x + s, x > s ∧ b)
 
--- #reduce steep₂ (List.range 100000) stack overflow
+-- #eval steep₂ (List.range 10)
 
 def steep₃ : List Nat → Bool :=
  Prod.snd ∘ faststeep
@@ -335,12 +333,11 @@ def steep₃ : List Nat → Bool :=
    xs.reverse.foldl (λ t x => (x + t.1, x > t.1 ∧ t.2) ) (0, true)
 
 -- #eval steep₃ [8,5,2]
--- #eval steep₃ (List.range 100000)
 
 example : steep₁ [8,4,2,1] = steep₂ [8,4,2,1] := rfl
 example : steep₁ [] = steep₂ [] := rfl
 
-example : ∀ xs, steep₁ xs = steep₂ xs := sorry
+example : ∀ xs, steep₁ xs = steep₂ xs := by sorry
 
 
 end Chapter1
