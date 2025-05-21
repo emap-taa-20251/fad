@@ -1,4 +1,3 @@
-
 import Fad.Chapter1
 
 namespace Chapter4
@@ -227,63 +226,64 @@ def mkTree [LT α] [DecidableRel (α := α) (· < ·)]
          List.length_filter_le,
          Nat.lt_add_one_of_le]
 
-
 end BST1
 
 
 namespace BST2
 
-variable {α : Type}
+variable {a : Type} [LT a] [DecidableRel (α := a) (· < ·)]
 
-inductive Tree (α : Type) : Type
-| null : Tree α
-| node : Nat → (Tree α) → α → (Tree α) → Tree α
-deriving Nonempty
+inductive Tree (a : Type) : Type
+| null : Tree a
+| node : Nat → (Tree a) → a → (Tree a) → Tree a
+deriving Nonempty, Inhabited
 
 open Std.Format in
 
-def Tree.toFormat [ToString α] : (t : Tree α) → Std.Format
+def Tree.toFormat [ToString a] : (t : Tree a) → Std.Format
 | .null => Std.Format.text "."
 | .node _ t₁ x t₂ =>
   bracket "(" (f!"{x}" ++
    line ++ nest 2 t₁.toFormat ++ line ++ nest 2 t₂.toFormat) ")"
 
-instance [ToString α] : Repr (Tree α) where
+instance [ToString a] : Repr (Tree a) where
  reprPrec e _ := e.toFormat
 
-def Tree.height : Tree α → Nat
+def Tree.height : Tree a → Nat
  | .null => 0
  | .node x _ _ _ => x
 
-def Tree.flatten : Tree α → List α
+def Tree.flatten : Tree a → List a
 | null => []
 | node _ l x r => l.flatten ++ [x] ++ r.flatten
 
-def node (l : Tree α) (x : α) (r : Tree α): Tree α :=
+def node (l : Tree a) (x : a) (r : Tree a): Tree a :=
   Tree.node h l x r
  where h := 1 + (max l.height r.height)
 
-def bias : Tree α → Int
+def bias : Tree a → Int
  | .null => 0
  | .node _ l _ r => l.height - r.height
 
-def rotr : Tree α → Tree α
+def rotr : Tree a → Tree a
 | .null => .null
 | .node _ (.node _ ll y rl) x r => node ll y (node rl x r)
 | .node _ .null _ _ => .null
 
-def rotl : Tree α → Tree α
+def rotl : Tree a → Tree a
 | .null => .null
 | .node _ ll y (.node _ lrl z rrl) => node (node ll y lrl) z rrl
 | .node _ _ _ .null => .null
 
-def balance (t1 : Tree α)  (x : α)  (t2 : Tree α) : Tree α :=
+def balance (t1 : Tree a)  (x : a)  (t2 : Tree a) : Tree a :=
  if Int.natAbs (h1 - h2) ≤ 1 then
    node t1 x t2
- else if h1 == h2 + 2 then
+ else if h1 = h2 + 2 then
    rotateR t1 x t2
- else
+ else if h2 = h1 + 2 then
    rotateL t1 x t2
+ else
+   panic! "balance: impossible case"
  where
   h1 := t1.height
   h2 := t2.height
@@ -297,19 +297,19 @@ def balance (t1 : Tree α)  (x : α)  (t2 : Tree α) : Tree α :=
    else rotl (node t1 x (rotr t2))
 
 
-def insert {α : Type} [LT α] [DecidableRel (α := α) (· < ·)]
- : (x : α) -> Tree α -> Tree α
+def insert : (x : a) -> Tree a -> Tree a
  | x, .null => node .null x .null
  | x, .node h l y r =>
    if x < y then balance (insert x l) y r else
    if x > y then balance l y (insert x r) else .node h l y r
 
 
-def mkTree [LT α] [DecidableRel (α := α) (· < ·)] : (xs : List α) → Tree α :=
- Chapter1.foldr insert (.null : Tree α)
+def mkTree : (xs : List a) → Tree a :=
+ List.foldr insert (.null : Tree a)
 
+-- #eval balance (mkTree [1,2,3,4]) 4 (mkTree [])
 
-def balanceR (t₁ : Tree α) (x : α) (t₂ : Tree α) : Tree α :=
+def balanceR (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
  match t₁ with
  | Tree.null => Tree.null
  | Tree.node _ l y r =>
@@ -317,12 +317,24 @@ def balanceR (t₁ : Tree α) (x : α) (t₂ : Tree α) : Tree α :=
    then balance l y (balanceR r x t₂)
    else balance l y (node r x t₂)
 
+-- def balanceL ...
+-- def gbalance ...
+
+def mktree : List a → Tree a :=
+  List.foldr insert Tree.null
+
+def sort : List a → List a :=
+  Tree.flatten ∘ mkTree
+
+#eval sort [3, 2, 1, 4, 5, 5] -- bug with duplicated elements!
+
 end BST2
 
 namespace DSet
 open BST2 (insert node)
 
 abbrev Set a := BST2.Tree a
+
 
 def member {a : Type} [LT a] [DecidableRel (α := a) (· < ·)] (x : a) : Set a → Bool
 | .null => false

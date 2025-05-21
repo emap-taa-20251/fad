@@ -5,11 +5,13 @@ namespace Chapter5
 
 namespace Quicksort
 
+variable {a : Type} [h₁ : LT a] [h₂ : DecidableRel (α := a) (· < ·)]
+
 inductive Tree a where
 | null : Tree a
 | node : (Tree a) → a → (Tree a) → Tree a
 
-def mkTree [LT a] [DecidableRel (α := a) (· < ·)] : List a → Tree a
+def mkTree: List a → Tree a
 | [] => Tree.null
 | x :: xs =>
   let p := xs.partition (. < x)
@@ -25,10 +27,10 @@ def Tree.flatten : Tree a → List a
 | null => []
 | node l x r => l.flatten ++ [x] ++ r.flatten
 
-def qsort₀ [LT a] [DecidableRel (α := a) (· < ·)] : List a → List a :=
+def qsort₀ : List a → List a :=
  Tree.flatten ∘ mkTree
 
-def qsort₁ [h₁ : LT a] [h₂ : DecidableRel (α := a) (· < ·)] : List a → List a
+def qsort₁ : List a → List a
  | []        => []
  | (x :: xs) =>
   let p := xs.partition (· < x)
@@ -38,6 +40,7 @@ def qsort₁ [h₁ : LT a] [h₂ : DecidableRel (α := a) (· < ·)] : List a �
   all_goals simp
    [List.partition_eq_filter_filter,
     List.length_filter_le, Nat.lt_add_one_of_le]
+
 
 def qsort₂ [Ord a] (f : a → a → Ordering) : List a → List a
   | []        => []
@@ -78,6 +81,7 @@ instance (a b : Person) : Decidable (a < b) :=
 def people := [
   Person.mk "Alice" 23,
   Person.mk "Bob" 25,
+  Person.mk "Bob" 25,
   Person.mk "Eve" 22]
 
 /-
@@ -88,7 +92,7 @@ def people := [
 end Quicksort
 
 
-namespace S52 -- Mergesort
+namespace Mergesort
 
 inductive Tree (α : Type) : Type where
  | null : Tree α
@@ -235,7 +239,7 @@ def msort₃ [LE a] [DecidableRel (α := a) (· ≤ ·)] : List a → List a
 #eval msort₁ ['a','b','a']
 -/
 
-end S52
+end Mergesort
 
 namespace Heapsort
 
@@ -247,7 +251,7 @@ inductive Tree (α : Type) : Type
 
 def flatten [LE a] [DecidableRel (α := a) (· ≤ ·)] : Tree a → List a
 | Tree.null       => []
-| Tree.node x u v => x :: S52.merge (flatten u) (flatten v)
+| Tree.node x u v => x :: Mergesort.merge (flatten u) (flatten v)
 
 
 open Std.Format in
@@ -263,6 +267,5 @@ instance [ToString a] : Repr (Tree a) where
 
 
 end Heapsort
-
 
 end Chapter5

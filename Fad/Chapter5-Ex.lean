@@ -11,8 +11,11 @@ namespace Chapter5
 section
 open Quicksort
 
-theorem qsort₀_eq_qsort₁ [h₁ : LT β] [h₂ : DecidableRel (α := β) (· < ·)]
-(xs : List β) : qsort₀ xs = qsort₁ xs := by
+variable {a : Type} [h₁ : LT a] [h₂ : DecidableRel (α := a) (· < ·)]
+
+-- trocar cases para induction?
+
+theorem qsort₀_eq_qsort₁ (xs : List a) : qsort₀ xs = qsort₁ xs := by
   cases xs with
   | nil =>
     rw [qsort₀, Function.comp, mkTree, Tree.flatten]
@@ -29,10 +32,10 @@ theorem qsort₀_eq_qsort₁ [h₁ : LT β] [h₂ : DecidableRel (α := β) (· 
     have h₂ := qsort₀_eq_qsort₁ (List.filter (not ∘ fun x => decide (x < a)) as)
     rw [h₁, h₂]
 termination_by xs.length
-  decreasing_by
-    all_goals simp
-    all_goals rw [Nat.lt_add_one_iff]
-    all_goals simp [List.length_filter_le]
+decreasing_by
+  all_goals simp
+  all_goals rw [Nat.lt_add_one_iff]
+  all_goals simp [List.length_filter_le]
 
 end
 
