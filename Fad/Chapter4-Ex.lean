@@ -219,7 +219,7 @@ end DSet
 -- # Exercicio 4.16
 
 namespace BST2
-
+/-
 def balanceL (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
  match t₂ with
  | Tree.null => Tree.null
@@ -227,7 +227,7 @@ def balanceL (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
    if l.height ≥ t₁.height + 2
    then balance (balanceL t₁ x l) y r
    else balance (node t₁ x l) y r
-
+-/
 end BST2
 
 -- # Exercicio 4.17
