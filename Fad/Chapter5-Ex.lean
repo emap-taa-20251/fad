@@ -217,7 +217,7 @@ def merge₁ (f : a → a → Ordering) : List a → List a → List a
     y :: merge₁ f (x :: xs) ys
 
 open Chapter1 (wrap unwrap single until') in
-open S52 in
+open Mergesort in
 
 def sortBy (f : a → a → Ordering) : List a → List a
  | []    => []

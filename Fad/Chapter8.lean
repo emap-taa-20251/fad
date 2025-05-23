@@ -11,7 +11,7 @@ namespace S1
 
 /- 8.1 Minimum-height trees -/
 
-open Chapter5.S52 (halve length_halve_fst length_halve_snd pairWith)
+open Chapter5.Mergesort (halve length_halve_fst length_halve_snd pairWith)
 open Chapter1 (wrap unwrap single until' concatMap)
 open Chapter6 (foldl1)
 open Chapter7 (minWith)
