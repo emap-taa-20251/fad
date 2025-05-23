@@ -142,7 +142,7 @@ example (a b : Nat) : T a b ≤ a + b := by
 
 /- # Exercicio 5.9 -/
 
-namespace S52
+namespace Mergesort
 
 example (xs : List Nat) : msort₂ xs = msort₃ xs := by
   induction xs with
@@ -151,7 +151,7 @@ example (xs : List Nat) : msort₂ xs = msort₃ xs := by
     simp [msort₂, msort₃]
     sorry
 
-end S52
+end Mergesort
 
 /- # Exercicio 5.10 -/
 
