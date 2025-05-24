@@ -11,7 +11,7 @@ namespace S1
 
 /- 8.1 Minimum-height trees -/
 
-open Chapter5.S52 (halve length_halve_fst length_halve_snd pairWith)
+open Chapter5.Mergesort (halve length_halve_fst length_halve_snd pairWith)
 open Chapter1 (wrap unwrap single until' concatMap)
 open Chapter6 (foldl1)
 open Chapter7 (minWith)
@@ -176,32 +176,33 @@ end S1
 /- 8.2 Huffman coding trees -/
 
 namespace S2
+
 open S1 (Tree Forest)
 open Chapter1 (concatMap wrap unwrap unwrap! single until' single picks apply)
 open Chapter3.SymList (nil singleSL headSL headSL! snocSL isEmpty tailSL)
 
 
-def depths : Tree a → List Nat :=
- let rec frm (n : Nat) : Tree a → List Nat
-  | Tree.leaf _   => [n]
-  | Tree.node u v => frm (n + 1) u ++ frm (n + 1) v
+def depths : S1.Tree a → List Nat :=
+ let rec frm (n : Nat) : S1.Tree a → List Nat
+  | .leaf _   => [n]
+  | .node u v => frm (n + 1) u ++ frm (n + 1) v
  frm 0
 
 abbrev Weight := Nat
 abbrev Elem   := Char × Weight
 abbrev Cost   := Nat
 
-def cost (t : Tree Elem) : Cost :=
+def cost (t : S1.Tree Elem) : Cost :=
  let t := t.fringe.zip (depths t)
  List.sum $ t.map (λ (c, d) => d * c.snd)
 
-def weight : Tree Elem → Nat
- | Tree.leaf (_, w) => w
- | Tree.node u v    => weight u + weight v
+def weight : S1.Tree Elem → Nat
+ | .leaf (_, w) => w
+ | .node u v    => weight u + weight v
 
-def cost₁ : Tree Elem → Cost
- | Tree.leaf _   => 0
- | Tree.node u v => cost u + cost v + weight u + weight v
+def cost₁ : S1.Tree Elem → Cost
+ | .leaf _   => 0
+ | .node u v => cost u + cost v + weight u + weight v
 
 def pairs (xs : List α) : List ((α × α) × List α) :=
   (picks xs).flatMap
@@ -210,7 +211,7 @@ def pairs (xs : List α) : List ((α × α) × List α) :=
       fun (y, zs) => ((x, y), zs)
 
 /- Exercise 8.11 -/
-def insert (t₁ : Tree Elem) : Forest Elem → Forest Elem
+def insert (t₁ : S1.Tree Elem) : Forest Elem → Forest Elem
  | [] => [t₁]
  | t₂ :: ts =>
    if weight t₁ ≤ weight t₂ then
@@ -220,26 +221,26 @@ def insert (t₁ : Tree Elem) : Forest Elem → Forest Elem
 
 def combine (ts : Forest Elem) : List (Forest Elem) :=
   (pairs ts).map fun (p, us) =>
-    insert (Tree.node p.1 p.2) us
+    insert (S1.Tree.node p.1 p.2) us
 
-def mkForests : List (Tree Elem) → List (Forest Elem) :=
+def mkForests : List (S1.Tree Elem) → List (Forest Elem) :=
  until' (flip List.all single) (concatMap combine) ∘ wrap
 
-def mkTrees : List Elem → List (Tree Elem) :=
+def mkTrees : List Elem → List (S1.Tree Elem) :=
  List.map unwrap! ∘ mkForests ∘ List.map Tree.leaf
 
-def mkForests₁ (ts : List (Tree Elem)) : List (Forest Elem) :=
+def mkForests₁ (ts : List (S1.Tree Elem)) : List (Forest Elem) :=
  apply (ts.length - 1) (concatMap combine) [ts]
 
-def mkTrees₁ : List Elem → List (Tree Elem) :=
+def mkTrees₁ : List Elem → List (S1.Tree Elem) :=
  List.map unwrap! ∘ mkForests₁ ∘ List.map Tree.leaf
 
 
 /- quadractic version -/
 
-def huffman₁ (es : List Elem) : Tree Elem :=
+def huffman₁ (es : List Elem) : S1.Tree Elem :=
  let gstep : Forest Elem → Forest Elem
-  | t₁ :: t₂ :: ts => insert (Tree.node t₁ t₂) ts
+  | t₁ :: t₂ :: ts => insert (S1.Tree.node t₁ t₂) ts
   | []             => dbg_trace "error"; []       -- not used
   | t₁ :: ts       => dbg_trace "error"; t₁ :: ts -- not used
  unwrap! (until' single gstep (List.map Tree.leaf es))
@@ -251,13 +252,13 @@ def huffman₁ (es : List Elem) : Tree Elem :=
 abbrev Queue (α : Type) := Chapter3.SymList α
 abbrev Stack (α : Type) := List α
 abbrev SQ (α : Type)    := Stack α × Queue α
-abbrev Pair             := Tree Elem × Weight
+abbrev Pair             := S1.Tree Elem × Weight
 
 def leaf : Elem → Pair
  | (c, w) => (Tree.leaf (c, w), w)
 
 def node : Pair → Pair → Pair
- | (t₁, w₁), (t₂, w₂) => (Tree.node t₁ t₂, w₁ + w₂)
+ | (t₁, w₁), (t₂, w₂) => (S1.Tree.node t₁ t₂, w₁ + w₂)
 
 def makeSQ (xs : List Pair) : SQ Pair :=
   (xs, nil)
@@ -265,7 +266,7 @@ def makeSQ (xs : List Pair) : SQ Pair :=
 def singleSQ (sq : SQ a) : Bool :=
   sq.1.isEmpty ∧ singleSL sq.2
 
-def extractSQ (sq : SQ Pair) : Tree Elem :=
+def extractSQ (sq : SQ Pair) : S1.Tree Elem :=
   (headSL! sq.2).1
 
 
@@ -290,7 +291,7 @@ def gstep (ps : SQ Pair) : SQ Pair :=
   let (p₂, rs) := extractMin qs
   add (node p₁ p₂) rs
 
-def huffman : List Elem → Tree Elem :=
+def huffman : List Elem → S1.Tree Elem :=
  extractSQ ∘ until' singleSQ gstep ∘ makeSQ ∘ List.map leaf
 
 -- #eval huffman [('a', 2), ('b', 3), ('c', 1), ('d', 20)]

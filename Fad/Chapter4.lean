@@ -326,7 +326,7 @@ def mktree : List a → Tree a :=
 def sort : List a → List a :=
   Tree.flatten ∘ mkTree
 
-#eval sort [3, 2, 1, 4, 5, 5] -- bug with duplicated elements!
+-- #eval sort [3, 2, 1, 4, 5, 5] -- bug with duplicated elements!
 
 end BST2
 

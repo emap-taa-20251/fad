@@ -6,7 +6,7 @@ import Fad.«Chapter4-Ex»
 
 namespace Chapter6
 open Chapter1 (unwrap until' single)
-open Chapter5.S52 (halve length_halve_fst length_halve_snd)
+open Chapter5.Mergesort (halve length_halve_fst length_halve_snd)
 open Chapter5.Quicksort (qsort₁)
 open Chapter4.BST2 (partition3)
 
