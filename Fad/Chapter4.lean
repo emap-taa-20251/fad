@@ -307,7 +307,6 @@ def insert : (x : a) -> Tree a -> Tree a
 def mkTree : (xs : List a) → Tree a :=
  List.foldr insert (.null : Tree a)
 
--- #eval balance (mkTree [1,2,3,4]) 4 (mkTree [])
 
 def balanceR (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
  match t₁ with
@@ -336,13 +335,23 @@ def gbalance (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
  else
    balanceL t₁ x t₂
 
-def mktree : List a → Tree a :=
-  List.foldr insert Tree.null
+def insert₁ : (x : a) -> Tree a -> Tree a
+ | x, .null => node .null x .null
+ | x, .node h l y r =>
+   if x < y then gbalance (insert₁ x l) y r else
+   if x > y then gbalance l y (insert₁ x r) else .node h l y r
+
+def mkTree₁ : List a → Tree a :=
+  List.foldr insert₁ Tree.null
 
 def sort : List a → List a :=
-  Tree.flatten ∘ mkTree
+  Tree.flatten ∘ mkTree₁
 
--- #eval sort [3, 2, 1, 4, 5, 5] -- bug with duplicated elements!
+/-
+#eval mkTree₁ $ List.range 100 -- confirm balance
+#eval gbalance (mkTree [1,2,3,4,5,6,7]) 4 (mkTree []) -- didn't work with `balance`
+#eval sort [3, 2, 1, 4, 5, 5] -- bug with duplicated elements!
+-/
 
 end BST2
 

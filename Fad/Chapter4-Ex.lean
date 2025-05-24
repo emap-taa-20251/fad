@@ -163,11 +163,11 @@ def partition3 [LT a]
      else (us, vs, x :: ws)
  xs.foldr op ([], [], [])
 
-partial def mkTree₁ : (xs : List Nat) → Tree (List Nat)
+partial def mkTree₂ : (xs : List Nat) → Tree (List Nat)
 | [] => .null
 | (x :: xs) =>
    match partition3 x (x :: xs) with
-   | (us, vs, ws) => node (mkTree₁ us) vs (mkTree₁ ws)
+   | (us, vs, ws) => node (mkTree₂ us) vs (mkTree₂ ws)
 
 
 end BST2
@@ -218,17 +218,7 @@ end DSet
 
 -- # Exercicio 4.16
 
-namespace BST2
-
-/-def balanceL (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
- match t₂ with
- | Tree.null => Tree.null
- | Tree.node _ l y r =>
-   if l.height ≥ t₁.height + 2
-   then balance (balanceL t₁ x l) y r
-   else balance (node t₁ x l) y r-/
-
-end BST2
+-- See Chapter4.lean
 
 -- # Exercicio 4.17
 
