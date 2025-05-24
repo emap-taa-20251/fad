@@ -317,8 +317,24 @@ def balanceR (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
    then balance l y (balanceR r x t₂)
    else balance l y (node r x t₂)
 
--- def balanceL ...
--- def gbalance ...
+def balanceL (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
+ match t₂ with
+ | Tree.null => Tree.null
+ | Tree.node _ l y r =>
+   if l.height ≥ t₁.height + 2 then
+     balance (balanceL t₁ x l) y r
+   else
+     balance (node t₁ x l) y r
+
+def gbalance (t₁ : Tree a) (x : a) (t₂ : Tree a) : Tree a :=
+ let h1 := t₁.height
+ let h2 := t₂.height
+ if Int.natAbs (h1 - h2) ≤ 2 then
+   balance t₁ x t₂
+ else if h1 > h2 then
+   balanceR t₁ x t₂
+ else
+   balanceL t₁ x t₂
 
 def mktree : List a → Tree a :=
   List.foldr insert Tree.null
