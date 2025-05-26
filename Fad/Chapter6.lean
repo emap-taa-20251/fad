@@ -12,33 +12,42 @@ open Chapter4.BST2 (partition3)
 
 -- # Section 6.1: minimum and maximum
 
-def foldr1 [Inhabited a] (f : a → a → a) : List a → a
+variable {a : Type} [Inhabited a]
+  [LT a] [DecidableRel (α := a) (· < ·)]
+  [LE a] [DecidableRel (α := a) (· ≤ ·)] [Max a] [Min a]
+
+def foldr1₀ (f : a → a → a) (xs : List a) (h : xs ≠ []) : a
+  :=
+  if h₁ : xs.length = 1 then
+    xs.head (by simp [h])
+  else
+    let a :: as := xs
+    have h₂ : as ≠ [] := by
+     simp ; intro h₂; apply h₁ ; rw [h₂]; simp
+    f a (foldr1₀ f as h₂)
+
+def foldr1 (f : a → a → a) : List a → a
   | []    => default
   | [x]   => x
   | x::xs => f x (foldr1 f xs)
 
-def foldl1 [Inhabited a] (f : a → a → a) : List a → a
+def foldl1 (f : a → a → a) : List a → a
   | []    => default
   | x::xs => xs.foldl f x
 
-def minimum [Inhabited a] [LE a] [DecidableRel (α := a) (· ≤ ·)]
-  : List a → a :=
+def minimum : List a → a :=
   foldr1 (fun x y => if x ≤ y then x else y)
 
-def maximum [Inhabited a] [Max a] : List a → a :=
+def maximum : List a → a :=
   foldr1 max
 
-
-def minmax₀ [Inhabited a] [Min a] [Max a]
-  : List a → (a × a)
+def minmax₀ : List a → (a × a)
   | []    => (default, default)
   | x::xs =>
     let op x q := (min x q.1, max x q.2)
     xs.foldr op (x,x)
 
-
-def minmax₁ [Inhabited a] [LT a] [DecidableRel (α := a) (· < ·)]
-  : List a → (a × a)
+def minmax₁ : List a → (a × a)
   | []    => (default, default)
   | x::xs =>
     let op x q :=
@@ -47,9 +56,7 @@ def minmax₁ [Inhabited a] [LT a] [DecidableRel (α := a) (· < ·)]
       else    (q.1, q.2)
     xs.foldr op (x,x)
 
-
-def minmax₂ [Inhabited a] [Min a] [Max a] [LE a] [DecidableRel (α := a) (· ≤ ·)]
-  : List a → (a × a)
+def minmax₂ : List a → (a × a)
   | []    => (default, default)
   | x::xs =>
     if      h₁ : xs.length = 0 then (x, x)
@@ -72,8 +79,8 @@ def pairWith (f : a → a → a) : List a →  List a
  | [x]      => [x]
  | x::y::xs => (f x y) :: pairWith f xs
 
-def mkPairs [LE a] [DecidableRel (α := a) (· ≤ ·)]
-  : List a → List (a × a)
+
+def mkPairs : List a → List (a × a)
   | []       => []
   | [x]      => [(x, x)]
   | x::y::xs =>
@@ -82,9 +89,8 @@ def mkPairs [LE a] [DecidableRel (α := a) (· ≤ ·)]
     else
      (y, x) :: mkPairs xs
 
-def minmax [Inhabited a] [LE a] [DecidableRel (α := a) (· ≤ ·)]
-  [Min a] [Max a] (xs : List a)
-  : (a × a) :=
+
+def minmax (xs : List a) : (a × a) :=
   let op p q := (min p.1 q.1, max p.2 q.2)
   (unwrap ∘ until' single (pairWith op) ∘ mkPairs) xs
     |>.getD (default, default)
@@ -97,18 +103,14 @@ def minmax [Inhabited a] [LE a] [DecidableRel (α := a) (· ≤ ·)]
  xs.get (Fin.mk 2 (by simp [List.length]) : Fin xs.length)
 -/
 
-def select₀ [Inhabited a] [LT a] [DecidableRel (α := a) (· < ·)]
- (k : Nat) (xs : List a) : a :=
+def select₀ (k : Nat) (xs : List a) : a :=
  (qsort₁ xs)[k - 1]!
 
-
-def median [Inhabited a] [LT a] [DecidableRel (α := a) (· < ·)]
-  (xs : List a) : a :=
+def median (xs : List a) : a :=
   let k := (xs.length + 1) / 2
   select₀ k xs
 
-
-partial def group [Inhabited a] (n : Nat) (xs : List a) : List (List a) :=
+partial def group (n : Nat) (xs : List a) : List (List a) :=
  match xs with
  | [] => []
  | xs =>

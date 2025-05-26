@@ -146,7 +146,7 @@ namespace Mergesort
 
 example (xs : List Nat) : msort₂ xs = msort₃ xs := by
   induction xs with
-  | nil => decide
+  | nil => simp [msort₂, msort₃, mkTree₂, flatten]
   | cons x xs ih =>
     simp [msort₂, msort₃]
     sorry
