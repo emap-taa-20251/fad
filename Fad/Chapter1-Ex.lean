@@ -1,6 +1,6 @@
 import Fad.Chapter1
-import Batteries
-import Mathlib
+import Batteries.Data.List.Basic
+import Mathlib.Data.List.Scan
 
 namespace Chapter1
 

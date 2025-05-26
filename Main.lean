@@ -16,6 +16,6 @@ def main (args : List String) : IO Unit := do
  | [] => println! "Usage: lake fad FILE"
  | a :: _ =>
   let r ← readFile a
-  let t := Chapter4.BST1.mkTree r
+  let t := Chapter4.BST2.mkTree r
   println! t.height
-  println! Chapter4.BST1.search id 678 t
+  println! Chapter4.BST2.search id 678 t

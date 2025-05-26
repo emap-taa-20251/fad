@@ -347,6 +347,19 @@ def mkTree₁ : List a → Tree a :=
 def sort : List a → List a :=
   Tree.flatten ∘ mkTree₁
 
+
+def search [DecidableEq a] (f : a → a) : a → Tree a → Option a
+| _, Tree.null         => none
+| k, Tree.node _ l x r =>
+  if f x < k then
+   search f k r
+  else
+   if f x = k then
+    some x
+   else
+    search f k l
+
+
 /-
 #eval mkTree₁ $ List.range 100 -- confirm balance
 #eval gbalance (mkTree [1,2,3,4,5,6,7]) 4 (mkTree []) -- didn't work with `balance`
