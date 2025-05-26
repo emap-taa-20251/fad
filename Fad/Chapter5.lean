@@ -20,8 +20,7 @@ def mkTree: List a → Tree a
  decreasing_by
   all_goals simp
    [List.partition_eq_filter_filter,
-    List.length_filter_le,
-    Nat.lt_add_one_of_le]
+    List.length_filter_le, Nat.lt_add_one_of_le]
 
 def Tree.flatten : Tree a → List a
 | null => []
@@ -55,15 +54,18 @@ def qsort₂ [Ord a] (f : a → a → Ordering) : List a → List a
 
 /-
 #eval qsort₁ (List.iota 145)
-#eval qsort₂ compare ['c','b','a']
+#eval qsort₂ (fun a b => Ordering.swap <| compare a b) ['c','a','b']
+#eval qsort₂ compare ['c','a','b']
 -/
+
 
 end Quicksort
 
 
 namespace Mergesort
 
-variable {a : Type} [Inhabited a] [LE a] [DecidableRel (α := a) (· ≤ ·)]
+variable {a : Type} [Inhabited a]
+ [LE a] [DecidableRel (α := a) (· ≤ ·)]
 
 inductive Tree (a : Type) : Type where
  | null : Tree a
@@ -82,10 +84,10 @@ def merge : List a → List a → List a
     y :: merge (x :: xs) ys
 
 
-def flatten : Tree a → List a
+def Tree.flatten : Tree a → List a
  | Tree.null     => []
  | Tree.leaf x   => [x]
- | Tree.node l r => merge (flatten l) (flatten r)
+ | Tree.node l r => merge l.flatten r.flatten
 
 
 def halve₀ (xs : List a) : (List a × List a) :=
@@ -93,11 +95,11 @@ def halve₀ (xs : List a) : (List a × List a) :=
  (xs.take m,xs.drop m)
 
 
-def halve : (xs : List a) → (List a × List a) :=
+def halve : List a → (List a × List a) :=
  let op x p := (p.2, x :: p.1)
  List.foldr op ([],[])
 
---#eval halve [10,2,3,4,5,6,8,7,9,1]
+-- #eval halve [10,2,3,4,5,6,8,7,9,1]
 
 def twoStepInduction {P : List a → Prop}
   (empty : P [])
@@ -105,17 +107,19 @@ def twoStepInduction {P : List a → Prop}
   (more : ∀ a b as, P as → P (a :: b :: as)) : ∀ as, P as
   | []           => empty
   | [a]          => single [a] (by simp)
-  | a :: b :: cs => more _ _ _ (twoStepInduction empty single more _)
+  | a :: b :: cs =>
+    more _ _ _ (twoStepInduction empty single more _)
 
 
-theorem length_halve_fst : (halve xs).fst.length = xs.length / 2 := by
+theorem length_halve_fst
+ : (halve xs).fst.length = xs.length / 2 := by
  induction xs using twoStepInduction with
  | empty          => simp [halve]
  | single a h     =>
-   have _ :: [] := a
+   have b :: [] := a
    simp [halve]
  | more a b cs ih =>
-   rw [halve, List.foldr, List.foldr, ←halve]
+   repeat rw [halve, List.foldr, ←halve]
    simp
    omega
 
@@ -148,7 +152,7 @@ def mkTree₀ : (as : List a) → Tree a
 
 
 def msort₀ (xs : List a) : List a :=
-  (flatten ∘ mkTree₀) xs
+  (Tree.flatten ∘ mkTree₀) xs
 
 
 def mkPair (n : Nat) (xs : List a) : (Tree a × List a) :=
@@ -164,13 +168,11 @@ def mkPair (n : Nat) (xs : List a) : (Tree a × List a) :=
    (Tree.node t₁ t₂, zs)
  termination_by (n, xs)
 
-
 def mkTree₁ (as : List a) : Tree a :=
   mkPair as.length as |>.fst
 
 def msort₁ (xs : List a) : List a :=
-  (flatten ∘ mkTree₁) xs
-
+  (Tree.flatten ∘ mkTree₁) xs
 
 def msort₂ : List a → List a
  | []      => []
@@ -197,18 +199,20 @@ open Chapter1 (wrap unwrap single until') in
 def mkTree₂ : List a → Tree a
  | []      => .null
  | a :: as =>
-    unwrap (until' single (pairWith .node) (List.map .leaf (a::as))) |>.getD .null
+    unwrap (until' single (pairWith .node) ((a::as).map .leaf))
+    |>.getD .null
 
 def msort₃ (xs : List a) : List a :=
-  (flatten ∘ mkTree₂) xs
+  (Tree.flatten ∘ mkTree₂) xs
 
 
 open Chapter1 (wrap unwrap single until') in
 
-def msort₄ [LE a] [DecidableRel (α := a) (· ≤ ·)] : List a → List a
+def msort₄ : List a → List a
  | []    => []
  | x::xs =>
-   unwrap (until' single (pairWith merge) (List.map wrap (x::xs))) |>.getD []
+   unwrap (until' single (pairWith merge) ((x::xs).map wrap))
+   |>.getD []
 
 /-
 #eval msort₁ [5,3,4,2,1,1]
