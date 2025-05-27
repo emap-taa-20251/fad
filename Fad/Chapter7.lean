@@ -3,7 +3,7 @@ import Fad.Chapter6
 
 namespace Chapter7
 
--- 7.1 A generic greedy algorithm
+-- # Section 7.1 A generic greedy algorithm
 
 def NonEmptyList (α : Type) : Type :=
  {l : List α // l.length > 0}
@@ -46,7 +46,7 @@ def minWith {a b : Type} [LE b] [Inhabited a] [DecidableRel (α := b) (· ≤ ·
   foldr1 (smaller f) as
 
 
--- 7.2 Greedy sorting algorithms
+-- # Section 7.2 Greedy sorting algorithms
 
 open Chapter1 (tails) in
 
@@ -108,7 +108,7 @@ def pick [LE a] [h : DecidableRel (α := a) (· ≤ ·)] [Inhabited a]
     aux p ps
 
 
--- 7.3 Coin-changing
+-- # Section 7.3 Coin-changing
 
 namespace S73
 
