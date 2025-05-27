@@ -64,8 +64,11 @@ end Quicksort
 
 namespace Mergesort
 
+open Chapter1 (wrap unwrap single until') 
+
 variable {a : Type} [Inhabited a]
  [LE a] [DecidableRel (α := a) (· ≤ ·)]
+
 
 inductive Tree (a : Type) : Type where
  | null : Tree a
@@ -99,7 +102,6 @@ def halve : List a → (List a × List a) :=
  let op x p := (p.2, x :: p.1)
  List.foldr op ([],[])
 
--- #eval halve [10,2,3,4,5,6,8,7,9,1]
 
 def twoStepInduction {P : List a → Prop}
   (empty : P [])
@@ -124,7 +126,8 @@ theorem length_halve_fst
    omega
 
 
-theorem length_halve_snd : (halve xs).snd.length = (xs.length + 1) / 2 := by
+theorem length_halve_snd 
+ : (halve xs).snd.length = (xs.length + 1) / 2 := by
  induction xs using twoStepInduction with
  | empty          => simp [halve]
  | single a h     =>
@@ -143,9 +146,9 @@ def mkTree₀ : (as : List a) → Tree a
     Tree.leaf x
    else
     let p := halve (x :: xs)
-    have : (halve (x :: xs)).fst.length < xs.length + 1 :=
+    have : (halve <| x :: xs).1.length < xs.length + 1 :=
      by simp [length_halve_fst]; omega
-    have : (halve (x :: xs)).snd.length < xs.length + 1 :=
+    have : (halve <| x :: xs).2.length < xs.length + 1 :=
      by simp [length_halve_snd]; omega
     Tree.node (mkTree₀ p.1) (mkTree₀ p.2)
  termination_by xs => xs.length
@@ -153,6 +156,20 @@ def mkTree₀ : (as : List a) → Tree a
 
 def msort₀ (xs : List a) : List a :=
   (Tree.flatten ∘ mkTree₀) xs
+
+
+def msort₁ : List a → List a
+ | []      => []
+ | x :: xs =>
+   if h: xs.length = 0 then [x]
+   else
+    let p := halve (x :: xs)
+    have : (halve $ x :: xs).1.length < xs.length + 1 := by
+      simp [length_halve_fst]; omega
+    have : (halve $ x :: xs).2.length < xs.length + 1 := by
+      simp [length_halve_snd]; omega
+    merge (msort₁ p.1) (msort₁ p.2)
+ termination_by xs => xs.length
 
 
 def mkPair (n : Nat) (xs : List a) : (Tree a × List a) :=
@@ -168,24 +185,13 @@ def mkPair (n : Nat) (xs : List a) : (Tree a × List a) :=
    (Tree.node t₁ t₂, zs)
  termination_by (n, xs)
 
+
 def mkTree₁ (as : List a) : Tree a :=
-  mkPair as.length as |>.fst
+  mkPair as.length as |>.1
 
-def msort₁ (xs : List a) : List a :=
+
+def msort₂ (xs : List a) : List a :=
   (Tree.flatten ∘ mkTree₁) xs
-
-def msort₂ : List a → List a
- | []      => []
- | x :: xs =>
-   if h: xs.length = 0 then [x]
-   else
-    let p := halve (x :: xs)
-    have : (halve (x :: xs)).fst.length < xs.length + 1 := by
-      simp [length_halve_fst]; omega
-    have : (halve (x :: xs)).snd.length < xs.length + 1 := by
-      simp [length_halve_snd]; omega
-    merge (msort₂ p.1) (msort₂ p.2)
- termination_by xs => xs.length
 
 
 def pairWith (f : a → a → a) : (List a) → List a
@@ -194,31 +200,41 @@ def pairWith (f : a → a → a) : (List a) → List a
  | (x :: y :: xs) => f x y :: pairWith f xs
 
 
-open Chapter1 (wrap unwrap single until') in
-
 def mkTree₂ : List a → Tree a
- | []      => .null
- | a :: as =>
-    unwrap (until' single (pairWith .node) ((a::as).map .leaf))
+ | []  => .null
+ | as  =>
+   unwrap (until' single (pairWith .node) (as.map .leaf))
     |>.getD .null
+
 
 def msort₃ (xs : List a) : List a :=
   (Tree.flatten ∘ mkTree₂) xs
 
 
-open Chapter1 (wrap unwrap single until') in
-
 def msort₄ : List a → List a
- | []    => []
- | x::xs =>
-   unwrap (until' single (pairWith merge) ((x::xs).map wrap))
-   |>.getD []
+ | []   => []
+ | as   =>
+   unwrap (until' single (pairWith merge) (as.map wrap))
+    |>.getD []
 
-/-
-#eval msort₁ [5,3,4,2,1,1]
--/
+
+def msort₅ : List a → List a
+  | []  => []
+  | xs  =>
+    let op (x : a) : List (List a) → List (List a)
+    | []               => [[x]]
+    | [] :: yss        => [x] :: yss -- unreachable case
+    | (y :: ys) :: yss =>
+      if x ≤ y then
+        (x :: y :: ys) :: yss
+      else
+        [x] :: (y :: ys) :: yss
+    let runs := List.foldr op []
+  unwrap (until' single (pairWith merge) (runs xs)) |>.getD []
+
 
 end Mergesort
+
 
 
 namespace Heapsort

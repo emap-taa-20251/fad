@@ -5,14 +5,17 @@ import Fad.«Chapter1-Ex»
 import Fad.«Chapter4-Ex»
 
 namespace Chapter6
+
 open Chapter1 (unwrap until' single)
 open Chapter5.Mergesort (halve length_halve_fst length_halve_snd)
 open Chapter5.Quicksort (qsort₁)
 open Chapter4.BST2 (partition3)
 
+
 -- # Section 6.1: minimum and maximum
 
-variable {a : Type} [Inhabited a]
+variable {a : Type} 
+  [Inhabited a] [DecidableRel (α := a) (· = ·)]
   [LT a] [DecidableRel (α := a) (· < ·)]
   [LE a] [DecidableRel (α := a) (· ≤ ·)] [Max a] [Min a]
 
@@ -110,6 +113,7 @@ def median (xs : List a) : a :=
   let k := (xs.length + 1) / 2
   select₀ k xs
 
+
 partial def group (n : Nat) (xs : List a) : List (List a) :=
  match xs with
  | [] => []
@@ -118,27 +122,21 @@ partial def group (n : Nat) (xs : List a) : List (List a) :=
   p.1 :: (group n p.2)
 
 
-/-- `qsort₁` or `qsort` ? -/
-def medians [Inhabited a] [LT a]
-  [DecidableRel (α := a) (· < ·)] [DecidableRel (α := a) (· = ·)]
-  : List a → List a :=
+/- `qsort₁` or `qsort` ? -/
+def medians : List a → List a :=
   let middle (xs : List a) := xs[((xs.length + 1) / 2) - 1]!
   List.map (middle ∘ qsort₁) ∘ group 5
 
 
 /- `select₀` or `select` ? -/
-def pivot [Inhabited a] [LT a]
-  [DecidableRel (α := a) (· < ·)] [DecidableRel (α := a) (· = ·)]
-  : List a → a
+def pivot : List a → a
   | [x] => x
   | xs  =>
     let median xs := select₀ ((xs.length + 1) / 2) xs
     median (medians xs)
 
 
-partial def qsort [Inhabited a] [LT a]
-  [DecidableRel (α := a) (· < ·)] [DecidableRel (α := a) (· = ·)]
-  : List a → List a
+partial def qsort : List a → List a
   | [] => []
   | xs =>
     let p := partition3 (pivot xs) xs
@@ -146,9 +144,7 @@ partial def qsort [Inhabited a] [LT a]
 
 
 /- this function breaks with k > xs.length -/
-partial def select [Inhabited a] [LT a]
-  [DecidableRel (α := a) (· < ·)] [DecidableRel (α := a) (· = ·)]
-  (k : Nat) (xs : List a) : a :=
+partial def select (k : Nat) (xs : List a) : a :=
   match partition3 (pivot xs) xs with
   | (us, vs, ws) =>
     let m := us.length

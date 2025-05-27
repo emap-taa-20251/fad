@@ -153,8 +153,8 @@ def partition {α : Type} (p : α → Bool) : List α → List α × List α :=
 
 namespace BST2
 
-def partition3 [LT a]
- [DecidableRel (α := a) (· < ·)] [DecidableRel (α := a) (· = ·)]
+def partition3 [LT a] [DecidableRel (α := a) (· < ·)] 
+ [DecidableRel (α := a) (· = ·)]
  (y : a) (xs : List a) : (List a × List a × List a) :=
  let op x acc :=
    let (us, vs, ws) := acc
@@ -216,9 +216,8 @@ def union₂ [Inhabited a] [LT a] [DecidableEq a] [DecidableRel (α := a) (· < 
 end DSet
 
 
--- # Exercicio 4.16
+-- # Exercicio 4.16 - see Chapter4.lean 
 
--- See Chapter4.lean
 
 -- # Exercicio 4.17
 

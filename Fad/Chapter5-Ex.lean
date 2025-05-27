@@ -143,11 +143,12 @@ example (a b : Nat) : T a b ≤ a + b := by
 /- # Exercicio 5.9 -/
 
 section
+
 open Mergesort
 
 example (xs : List Nat) : msort₂ xs = msort₃ xs := by
   induction xs with
-  | nil => simp [msort₂, msort₃, mkTree₂, Tree.flatten]
+  | nil => simp [msort₂, msort₃, mkPair, mkTree₁, mkTree₂]
   | cons x xs ih =>
     simp [msort₂, msort₃]
     sorry
