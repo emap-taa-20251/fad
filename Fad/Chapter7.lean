@@ -8,7 +8,7 @@ namespace Chapter7
 def NonEmptyList (α : Type) : Type :=
  {l : List α // l.length > 0}
 
-def foldr1₀ (f : a → a → a) (as : NonEmptyList a) : a :=
+def foldr1₀ {a : Type} (f : a → a → a) (as : NonEmptyList a) : a :=
   let x := as.val.head (List.ne_nil_of_length_pos as.property)
   if h₂ : as.val.length = 1 then
     x
@@ -25,7 +25,7 @@ def foldr1₀ (f : a → a → a) (as : NonEmptyList a) : a :=
 
 -- #eval foldr1₀ (fun a b => a + b ) (Subtype.mk [1,2,3,4,5,6] (by simp))
 
-def foldr1₁ (f : a → a → a) (as : List a) (h : as.length > 0 := by decide) : a :=
+def foldr1₁ {a : Type} (f : a → a → a) (as : List a) (h : as.length > 0 := by decide) : a :=
   let x := as.head (List.ne_nil_of_length_pos h)
   if h₂ : as.length = 1 then
     x
@@ -34,7 +34,7 @@ def foldr1₁ (f : a → a → a) (as : List a) (h : as.length > 0 := by decide)
 
 -- #eval foldr1₁ (fun a b => a + b ) [1,2,3]
 
-def foldr1 [Inhabited a] (f : a → a → a) : List a → a
+def foldr1 {a : Type} [Inhabited a] (f : a → a → a) : List a → a
   | []    => default
   | x::xs => xs.foldr f x
 
@@ -48,7 +48,11 @@ def minWith {a b : Type} [LE b] [Inhabited a] [DecidableRel (α := b) (· ≤ ·
 
 -- # Section 7.2 Greedy sorting algorithms
 
-open Chapter1 (tails) in
+variable {a : Type} [Inhabited a]
+  [LT a] [h₁ : DecidableRel (α := a) (· < ·)]
+  [LE a] [h₂ : DecidableRel (α := a) (· ≤ ·)]
+
+open Chapter1 (tails concatMap)
 
 def pairs (xs : List a) : List (Prod a a) :=
  let step₁ : List a → List (Prod a a) → List (Prod a a)
@@ -61,8 +65,7 @@ def pairs (xs : List a) : List (Prod a a) :=
  (tails xs).foldr step₁ []
 
 
-def ic [LT a] [DecidableRel (@LT.lt a _)]
- (xs : List a) : Nat :=
+def ic (xs : List a) : Nat :=
  (pairs xs).filter (λ p => p.1 > p.2) |>.length
 
 
@@ -71,18 +74,15 @@ def extend : a → List a → List (List a)
 | x, (y::xs)  => (x :: y :: xs) :: (extend x xs).map (y:: ·)
 
 
-open Chapter1 in
-
 def perms : List a → List (List a) :=
  List.foldr (concatMap ∘ extend) [[]]
 
-def sort [LT a] [DecidableRel (@LT.lt a _)]
-  : List a → List a :=
+
+def sort : List a → List a :=
   minWith ic ∘ perms
 
 
-def gstep [LT a] [DecidableRel (@LT.lt a _)]
-  (x : a) : List a → List a :=
+def gstep (x : a) : List a → List a :=
   (minWith ic) ∘ extend x
 
 
@@ -95,8 +95,7 @@ def picks (xs : List a) : List (a × List a) :=
   | x :: xs => (x, xs) :: helper x (picks xs)
 
 
-def pick [LE a] [h : DecidableRel (α := a) (· ≤ ·)] [Inhabited a]
- (xs : List a) : (a × List a) :=
+def pick (xs : List a) : (a × List a) :=
   match picks xs with
   | []      => (default, []) -- unreachable
   | [p]     => p

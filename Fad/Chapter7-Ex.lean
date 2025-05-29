@@ -79,12 +79,34 @@ def perms₁ {α : Type} : List α → List (List α)
 
 open Chapter6 (minimum)
 
-example (x : Nat)
-  : minimum ([].map (x :: ·)) ≠ x :: (minimum []) := by
-  rw [List.map]
-  rw [minimum]
-  rw [Chapter6.foldr1]
-  exact List.ne_cons_self
+example (x : Nat) : minimum [x] = x := by
+  unfold minimum
+  rewrite [Chapter6.foldr1]
+  rfl
+
+def min_list_list : List Nat → List Nat → List Nat
+ | [], _  => []
+ |  _, [] => []
+ | xs@(a :: as), ys@(b :: bs) =>
+   if      a < b then xs
+   else if a > b then ys
+   else
+    a :: (min_list_list as bs)
+
+instance : Min (List Nat) where
+ min := min_list_list
+
+example (x : Nat) : ∀ xs, xs ≠ [] →
+ minimum (xs.map (x :: ·)) = (x :: ·) (minimum xs)
+ := by
+ intro xs h
+ simp [Function.comp]
+ induction xs with
+ | nil => contradiction
+ | cons a as ih =>
+   rw [List.map]
+   rw [minimum]
+   sorry
 
 
 /- # Exercicio 7.10  -/

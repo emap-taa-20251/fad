@@ -64,7 +64,7 @@ end Quicksort
 
 namespace Mergesort
 
-open Chapter1 (wrap unwrap single until') 
+open Chapter1 (wrap unwrap single until')
 
 variable {a : Type} [Inhabited a]
  [LE a] [DecidableRel (α := a) (· ≤ ·)]
@@ -126,7 +126,7 @@ theorem length_halve_fst
    omega
 
 
-theorem length_halve_snd 
+theorem length_halve_snd
  : (halve xs).snd.length = (xs.length + 1) / 2 := by
  induction xs using twoStepInduction with
  | empty          => simp [halve]
@@ -194,7 +194,7 @@ def msort₂ (xs : List a) : List a :=
   (Tree.flatten ∘ mkTree₁) xs
 
 
-def pairWith (f : a → a → a) : (List a) → List a
+def pairWith (f : a → a → a) : List a → List a
  | []             => []
  | [x]            => [x]
  | (x :: y :: xs) => f x y :: pairWith f xs
