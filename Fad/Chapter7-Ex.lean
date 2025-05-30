@@ -107,9 +107,13 @@ example (x : Nat) : ∀ xs, xs ≠ [] →
    cases as with
    | nil => simp [minimum, Chapter6.foldr1]
    | cons z zs =>
-   apply Eq.trans (congrArg (min_list_list (x :: a)) (ih (by simp)))
-   simp [min_list_list]
-   rfl
+     let f := min_list_list (x :: a)
+     have h₁ : z :: zs ≠ [] := by simp
+     have h₂ := ih h₁
+     have h₃ := congrArg f h₂
+     apply h₃.trans
+     simp [f, min_list_list]
+     rfl
 
 /- # Exercicio 7.10  -/
 
