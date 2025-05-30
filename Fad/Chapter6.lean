@@ -55,8 +55,8 @@ def minmax₁ : List a → (a × a)
   | x :: xs =>
     let op x q :=
       if      x < q.1 then (x, q.2)
-      else if q.2 < x then (q.1, x)
-      else    (q.1, q.2)
+      else if x > q.2 then (q.1, x)
+      else (q.1, q.2)
     xs.foldr op (x,x)
 
 def minmax₂ : List a → (a × a)
