@@ -104,10 +104,12 @@ example (x : Nat) : ∀ xs, xs ≠ [] →
  induction xs with
  | nil => contradiction
  | cons a as ih =>
-   rw [List.map]
-   rw [minimum]
-   sorry
-
+   cases as with
+   | nil => simp [minimum, Chapter6.foldr1]
+   | cons z zs =>
+   apply Eq.trans (congrArg (min_list_list (x :: a)) (ih (by simp)))
+   simp [min_list_list]
+   rfl
 
 /- # Exercicio 7.10  -/
 
