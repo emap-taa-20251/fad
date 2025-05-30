@@ -337,7 +337,45 @@ def steep₃ : List Nat → Bool :=
 example : steep₁ [8,4,2,1] = steep₂ [8,4,2,1] := rfl
 example : steep₁ [] = steep₂ [] := rfl
 
-example : ∀ xs, steep₁ xs = steep₂ xs := by sorry
+lemma add_steep₁.sum : ∀ (xs : List Nat) (x: Nat), steep₁.sum xs x = x + steep₁.sum xs 0 := by
+  intro xs
+  intro x
+  induction xs generalizing x with
+  | nil =>
+  rw [steep₁.sum.eq_def, steep₁.sum.eq_def]
+  simp
+  | cons a as ha =>
+  rw [steep₁.sum.eq_def, steep₁.sum.eq_def]
+  simp
+  rw [ha (a+x), ha a]
+  rewrite [← Nat.add_assoc x, Nat.add_comm x a]
+  trivial
 
+lemma steep₁_sum_eq_steep₂_sum :  ∀ xs : List Nat, (Prod.fst ∘ steep₂.faststeep) xs =  steep₁.sum xs 0 := by
+  intro xs
+  induction xs with
+  | nil =>
+    rewrite [Function.comp, steep₂.faststeep, steep₁.sum]
+    simp
+  | cons a as ha =>
+    rewrite [Function.comp, steep₂.faststeep, steep₁.sum]
+    simp
+    rewrite [add_steep₁.sum]
+    simp
+    rewrite [←ha, Function.comp]
+    trivial
+
+theorem steep₁_eq_steep₂ : ∀ (xs : List Nat), steep₁ xs = steep₂ xs := by
+  intro xs
+  induction xs with
+  | nil =>
+    rewrite [steep₁.eq_def, steep₂, Function.comp, steep₂.faststeep.eq_def]
+    simp
+  | cons x xs h =>
+  rewrite [steep₁.eq_def, steep₂, Function.comp, steep₂.faststeep.eq_def]
+  simp
+  rewrite [h, steep₂, Function.comp]
+  rewrite [← steep₁_sum_eq_steep₂_sum, Function.comp]
+  trivial
 
 end Chapter1
