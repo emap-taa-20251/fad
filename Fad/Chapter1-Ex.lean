@@ -294,28 +294,21 @@ example : concat [[1, 2], [3, 4]] = [1, 2, 3, 4] := by
   rewrite [List.foldl]
   rfl
 
+
 /- # Exercicio 1.21 -/
 
 -- set_option trace.profiler true
 
+/- List.sum é implementada com List.foldr. Na documentação, List.foldr diz
+   ser trocada em runtime pela implementação List.foldrTR onde TR é tail
+   recursive.  -/
+
 def steep₀ (xs : List Nat) : Bool :=
-  let sum (xs : List Nat) : Nat :=
-    xs.foldl (· + ·) 0
   match xs with
   | []  => true
-  | x :: xs => x > sum xs ∧ steep₀ xs
+  | x :: xs => x > xs.sum ∧ steep₀ xs
 
-def steep₁ (xs : List Nat) : Bool :=
-  let rec sum : List Nat → Nat → Nat
-   | [], s => s
-   | x :: xs, s  => sum xs (x + s)
-  match xs with
-  | []  => true
-  | x :: xs => x > sum xs 0 ∧ steep₁ xs
-
--- #eval steep₀ (List.range' 1 10000000).reverse
-
-def steep₂ : List Nat → Bool :=
+def steep₁ : List Nat → Bool :=
  Prod.snd ∘ faststeep
  where
   faststeep : List Nat → (Nat × Bool)
@@ -324,58 +317,43 @@ def steep₂ : List Nat → Bool :=
     let (s, b) := faststeep xs
     (x + s, x > s ∧ b)
 
--- #eval steep₂ (List.range 10)
-
-def steep₃ : List Nat → Bool :=
+def steep₂ : List Nat → Bool :=
  Prod.snd ∘ faststeep
  where
   faststeep (xs : List Nat) : (Nat × Bool) :=
    xs.reverse.foldl (λ t x => (x + t.1, x > t.1 ∧ t.2) ) (0, true)
 
+-- #eval steep₀ (List.range' 1 10000000).reverse
+-- #eval steep₂ (List.range 10)
 -- #eval steep₃ [8,5,2]
 
-example : steep₁ [8,4,2,1] = steep₂ [8,4,2,1] := rfl
+example : steep₀ [8,4,2,1] = steep₂ [8,4,2,1] := rfl
 example : steep₁ [] = steep₂ [] := rfl
 
-lemma add_steep₁.sum : ∀ (xs : List Nat) (x: Nat), steep₁.sum xs x = x + steep₁.sum xs 0 := by
-  intro xs
-  intro x
-  induction xs generalizing x with
-  | nil =>
-  rw [steep₁.sum.eq_def, steep₁.sum.eq_def]
-  simp
-  | cons a as ha =>
-  rw [steep₁.sum.eq_def, steep₁.sum.eq_def]
-  simp
-  rw [ha (a+x), ha a]
-  rewrite [← Nat.add_assoc x, Nat.add_comm x a]
-  trivial
+-- faststeep returns the correct sum as its first component
+theorem faststeep_sum (xs : List Nat)
+ : (steep₁.faststeep xs).1 = xs.sum := by
+ induction xs with
+ | nil =>
+   simp [steep₁.faststeep]
+ | cons x xs ih =>
+   simp [steep₁.faststeep]
+   rw [ih]
 
-lemma steep₁_sum_eq_steep₂_sum :  ∀ xs : List Nat, (Prod.fst ∘ steep₂.faststeep) xs =  steep₁.sum xs 0 := by
-  intro xs
+-- relationship between faststeep's boolean component and steep₀
+theorem faststeep_bool_eq_steep₀ (xs : List Nat)
+ : (steep₁.faststeep xs).2 = steep₀ xs := by
   induction xs with
   | nil =>
-    rewrite [Function.comp, steep₂.faststeep, steep₁.sum]
-    simp
-  | cons a as ha =>
-    rewrite [Function.comp, steep₂.faststeep, steep₁.sum]
-    simp
-    rewrite [add_steep₁.sum]
-    simp
-    rewrite [←ha, Function.comp]
-    trivial
+    simp [steep₁.faststeep, steep₀]
+  | cons x xs ih =>
+    simp [steep₁.faststeep, steep₀]
+    rw [faststeep_sum, ih]
 
-theorem steep₁_eq_steep₂ : ∀ (xs : List Nat), steep₁ xs = steep₂ xs := by
-  intro xs
-  induction xs with
-  | nil =>
-    rewrite [steep₁.eq_def, steep₂, Function.comp, steep₂.faststeep.eq_def]
-    simp
-  | cons x xs h =>
-  rewrite [steep₁.eq_def, steep₂, Function.comp, steep₂.faststeep.eq_def]
-  simp
-  rewrite [h, steep₂, Function.comp]
-  rewrite [← steep₁_sum_eq_steep₂_sum, Function.comp]
-  trivial
+-- steep₀ and steep₁ are equivalent
+theorem steep₀_eq_steep₁ (xs : List Nat) : steep₀ xs = steep₁ xs
+ := by
+  simp [steep₁]
+  rw [faststeep_bool_eq_steep₀]
 
 end Chapter1
