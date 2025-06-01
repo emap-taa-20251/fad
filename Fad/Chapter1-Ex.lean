@@ -303,11 +303,13 @@ example : concat [[1, 2], [3, 4]] = [1, 2, 3, 4] := by
    ser trocada em runtime pela implementação List.foldrTR onde TR é tail
    recursive.  -/
 
+-- complexity O(n^2)
 def steep₀ (xs : List Nat) : Bool :=
   match xs with
   | []  => true
   | x :: xs => x > xs.sum ∧ steep₀ xs
 
+-- complexity O(n)
 def steep₁ : List Nat → Bool :=
  Prod.snd ∘ faststeep
  where
@@ -317,18 +319,18 @@ def steep₁ : List Nat → Bool :=
     let (s, b) := faststeep xs
     (x + s, x > s ∧ b)
 
+-- complexity O(n)
 def steep₂ : List Nat → Bool :=
  Prod.snd ∘ faststeep
  where
   faststeep (xs : List Nat) : (Nat × Bool) :=
-   xs.reverse.foldl (λ t x => (x + t.1, x > t.1 ∧ t.2) ) (0, true)
+   xs.foldr (λ x t => (x + t.1, x > t.1 ∧ t.2) ) (0, true)
 
 -- #eval steep₀ (List.range' 1 10000000).reverse
 -- #eval steep₂ (List.range 10)
 -- #eval steep₃ [8,5,2]
 
 example : steep₀ [8,4,2,1] = steep₂ [8,4,2,1] := rfl
-example : steep₁ [] = steep₂ [] := rfl
 
 -- faststeep returns the correct sum as its first component
 theorem faststeep_sum (xs : List Nat)
@@ -341,7 +343,7 @@ theorem faststeep_sum (xs : List Nat)
    rw [ih]
 
 -- relationship between faststeep's boolean component and steep₀
-theorem faststeep_bool_eq_steep₀ (xs : List Nat)
+theorem faststeep_bool (xs : List Nat)
  : (steep₁.faststeep xs).2 = steep₀ xs := by
   induction xs with
   | nil =>
@@ -354,6 +356,6 @@ theorem faststeep_bool_eq_steep₀ (xs : List Nat)
 theorem steep₀_eq_steep₁ (xs : List Nat) : steep₀ xs = steep₁ xs
  := by
   simp [steep₁]
-  rw [faststeep_bool_eq_steep₀]
+  rw [faststeep_bool]
 
 end Chapter1
