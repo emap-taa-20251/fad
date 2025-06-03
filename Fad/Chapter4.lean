@@ -238,6 +238,7 @@ inductive Tree (a : Type) : Type
 | node : Nat → (Tree a) → a → (Tree a) → Tree a
 deriving Nonempty, Inhabited
 
+/-
 open Std.Format in
 
 def Tree.toFormat [ToString a] : (t : Tree a) → Std.Format
@@ -248,6 +249,7 @@ def Tree.toFormat [ToString a] : (t : Tree a) → Std.Format
 
 instance [ToString a] : Repr (Tree a) where
  reprPrec e _ := e.toFormat
+-/
 
 def Tree.height : Tree a → Nat
  | .null => 0
