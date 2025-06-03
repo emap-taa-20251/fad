@@ -1,4 +1,4 @@
-import Fad.Chapter4 
+import Fad.Chapter4
 import Fad.Chapter5
 
 /- # Ex 1
@@ -35,13 +35,31 @@ livros possa ser ordenada por `price` (usando
 
 -/
 
-section 
+section
 open Chapter5.Quicksort (qsort₂)
-open Chapter4.BST2 (search)
+open Chapter4.BST2 (search mkTree mkTree₁)
+
+structure Book where
+  title : String
+  price : Float
+ deriving Repr
+
+instance : LT Book where
+  lt a b := a.title < b.title
+
+instance : DecidableRel (fun (a b : Book) => a < b) :=
+  fun a b => String.decidableLT a.title b.title
+
+def books := List.range 100 |>.map (λ n => Book.mk s!"{n}" n.toFloat)
+
+/- Both `search` and `mkTree₁` need to use the same field for
+   insertion and lookup.-/
+
+#eval mkTree₁ books
+#eval search (·.title) "5" (mkTree₁ books)
 
 
-
-end 
+end
 
 
 /- # Ex 3
@@ -67,7 +85,7 @@ opções de seções:
 
 - 5.5 Sorting sums
 
-- 6.2 Selection from one set 
+- 6.2 Selection from one set
 
 - 6.3 Selection from two sets
 

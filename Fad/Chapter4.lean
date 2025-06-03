@@ -347,24 +347,15 @@ def mkTree₁ : List a → Tree a :=
 def sort : List a → List a :=
   Tree.flatten ∘ mkTree₁
 
+def search {b : Type} [Ord b] (key : a → b) (k : b)
+ : Tree a → Option a
+ | Tree.null         => none
+ | Tree.node _ l x r =>
+   match compare (key x) k with
+   | .lt => search key k r
+   | .gt => search key k l
+   | .eq => some x
 
-def search [DecidableEq a] (f : a → a) : a → Tree a → Option a
-| _, Tree.null         => none
-| k, Tree.node _ l x r =>
-  if f x < k then
-   search f k r
-  else
-   if f x = k then
-    some x
-   else
-    search f k l
-
-
-/-
-#eval mkTree₁ $ List.range 100 -- confirm balance
-#eval gbalance (mkTree [1,2,3,4,5,6,7]) 4 (mkTree []) -- didn't work with `balance`
-#eval sort [3, 2, 1, 4, 5, 5] -- bug with duplicated elements!
--/
 
 end BST2
 

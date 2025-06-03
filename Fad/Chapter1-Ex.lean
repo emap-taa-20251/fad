@@ -303,6 +303,16 @@ example : concat [[1, 2], [3, 4]] = [1, 2, 3, 4] := by
    ser trocada em runtime pela implementação List.foldrTR onde TR é tail
    recursive.  -/
 
+/-
+def sum : (xs : List Nat) → Nat
+ | [] => 0
+ | x :: xs => x + sum xs
+
+def sumTR : (xs : List Nat) → Nat → Nat
+ | []     , ac => ac
+ | x :: xs, ac => sumTR xs (ac + x)
+-/
+
 -- complexity O(n^2)
 def steep₀ (xs : List Nat) : Bool :=
   match xs with
