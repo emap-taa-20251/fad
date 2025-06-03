@@ -18,7 +18,7 @@ Seu código ficará dentro do namespace Chapter4.BST
 section
 open Chapter4.BST2 (search mkTree₁ sort)
 
-def counts (xs : List Nat) : List (Nat × Nat) :=
+def compress {a : Type} [BEq a] [Hashable a] (xs : List a) : List (a × Nat) :=
   let as := Std.HashMap.emptyWithCapacity
   let counts := xs.foldl (init := as) fun acc x =>
     if acc.contains x then
@@ -27,14 +27,19 @@ def counts (xs : List Nat) : List (Nat × Nat) :=
      acc.insert x 1
   counts.toList
 
+def uncompress {a : Type} : List (a × Nat) → List a :=
+ List.foldr (λ p r => (List.replicate p.2 p.1) ++ r) []
+
+#eval compress [1,2,3,2,3] |> uncompress
+
 instance : LT (Nat × Nat) where
   lt a b := a.1 < b.1
 
 instance : DecidableRel (fun (x y : Prod Nat Nat) => x < y) :=
   fun x y => Nat.decLt x.1 y.1
 
--- #eval mkTree₁ <| counts [10,20,20,45,60,78,10,67]
--- #eval sort <| counts [10,20,20,45,60,78,10,67]
+#eval compress [10,20,20,45,60,78,10,67] |> mkTree₁
+#eval compress [10,20,45,20,60,78,10,67] |> sort |> uncompress
 
 end
 
