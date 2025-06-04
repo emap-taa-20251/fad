@@ -1,7 +1,6 @@
 import Fad.Chapter1
 import Fad.«Chapter1-Ex»
 
-
 namespace Chapter3
 
 open List (reverse tail cons)
@@ -35,16 +34,16 @@ def consSL : α  → SymList α → SymList α
 
 
 /-
-example (x : α) (xs : SymList α) 
+example (x : α) (xs : SymList α)
  : (snoc x ∘ fromSL) xs = (fromSL ∘ snocSL x) xs
  := by
  have (as, bs) := xs
  unfold Function.comp snoc
  induction as generalizing bs with
- | nil => 
+ | nil =>
    simp [fromSL, snocSL]; sorry
- | cons y ys ih => 
-   simp [fromSL, snoc, snocSL, List.reverse_cons, 
+ | cons y ys ih =>
+   simp [fromSL, snoc, snocSL, List.reverse_cons,
          List.append_assoc]
 -/
 
@@ -171,10 +170,10 @@ def lastSL (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
      ys.head (by simp at h₁ ; exact h₁)
 
 def lastSL? : SymList a → Option a
-| ⟨[], [], _⟩ => none
-| ⟨x :: _, [], _⟩ => x
-| ⟨[], y :: _, _⟩ => y
-| ⟨_, y :: _, _⟩ => y
+ | ⟨[], [], _⟩     => none
+ | ⟨x :: _, [], _⟩ => x
+ | ⟨[], y :: _, _⟩ => y
+ | ⟨_, y :: _, _⟩  => y
 
 example (sl : SymList a) (h : ¬ isEmpty sl)
   : (fromSL sl).getLast (sl_noempty_l_noempty sl h) = lastSL sl h := by

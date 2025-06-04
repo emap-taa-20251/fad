@@ -27,7 +27,6 @@ def uncompress : List (Nat × Nat) → String :=
 
 end Assignment03
 
-
 namespace Chapter3
 
 variable {a : Type}
@@ -63,4 +62,20 @@ def List.init {α : Type} : List α → List α
 /- agora tente completar a prova seguinte -/
 
 example : ∀ sl : SymList a,
-  List.init sl.fromSL = sl.init.fromSL := sorry
+  List.init sl.fromSL = sl.init.fromSL := by
+  intro s
+  cases s with
+  | mk as bs ok =>
+    unfold SymList.fromSL
+    unfold List.init
+    cases as with
+    | nil =>
+      simp
+      cases bs with
+      | nil =>
+        simp [SymList.init, SymList.reverse, SymList.tailSL, SymList.nil]
+      | cons n ns =>
+        simp [SymList.init, SymList.reverse, SymList.tailSL, SymList.nil]
+        sorry
+    | cons n ns =>
+      sorry
