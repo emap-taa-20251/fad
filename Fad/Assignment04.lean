@@ -1,6 +1,5 @@
 import Fad.Chapter4
 import Fad.Chapter5
-import Std
 
 /- # Ex 1
 
@@ -16,9 +15,12 @@ Seu código ficará dentro do namespace Chapter4.BST
 -/
 
 section
-open Chapter4.BST2 (search mkTree₁ sort)
+open Chapter4.BST2 (search mkTree₁ sort Tree.flatten)
 
-def compress {a : Type} [BEq a] [Hashable a] (xs : List a) : List (a × Nat) :=
+variable {a : Type} [LT a] [BEq a] [Hashable a]
+  [DecidableRel (α := a) (· < ·)]
+
+def compress (xs : List a) : List (a × Nat) :=
   let as := Std.HashMap.emptyWithCapacity
   let counts := xs.foldl (init := as) fun acc x =>
     if acc.contains x then
@@ -27,19 +29,29 @@ def compress {a : Type} [BEq a] [Hashable a] (xs : List a) : List (a × Nat) :=
      acc.insert x 1
   counts.toList
 
-def uncompress {a : Type} : List (a × Nat) → List a :=
+def uncompress : List (a × Nat) → List a :=
  List.foldr (λ p r => (List.replicate p.2 p.1) ++ r) []
 
-#eval compress [1,2,3,2,3] |> uncompress
+instance : LT (a × Nat) where
+  lt x y := x.1 < y.1
 
-instance : LT (Nat × Nat) where
-  lt a b := a.1 < b.1
+def sort₁ : List a → List a :=
+  uncompress ∘ Tree.flatten ∘ mkTree₁ ∘ compress
 
-instance : DecidableRel (fun (x y : Prod Nat Nat) => x < y) :=
-  fun x y => Nat.decLt x.1 y.1
+#eval sort₁ [10,20,20,45,60,78,10,67]
 
-#eval compress [10,20,20,45,60,78,10,67] |> mkTree₁
-#eval compress [10,20,45,20,60,78,10,67] |> sort |> uncompress
+example : ∀ xs : List Nat, xs.length = (sort₁ xs).length := by
+  intro xs
+  induction xs with
+  | nil =>
+    simp [sort₁, compress, mkTree₁,
+     Chapter4.BST2.Tree.null, Tree.flatten,
+     Chapter4.BST2.insert₁, List.foldr]
+    sorry
+  | cons n ns h =>
+    rw [List.length_cons, h]
+    unfold sort₁
+    sorry
 
 end
 
@@ -59,6 +71,25 @@ livros possa ser ordenada por `price` (usando
 
 -/
 
+
+/-
+section
+
+structure Point (a : Type) where
+  x : a
+ deriving Repr
+
+instance {a : Type} [LT a] : LT (Point a) where
+ lt a b := a.x < b.x
+
+#eval "as" < "bs"
+#check (Point.mk "1")
+#eval (Point.mk "1") < (Point.mk "3")
+
+end
+-/
+
+
 section
 open Chapter5.Quicksort (qsort₂)
 open Chapter4.BST2 (search mkTree mkTree₁)
@@ -68,19 +99,24 @@ structure Book where
   price : Float
  deriving Repr
 
+instance : ToString Book where
+  toString b := s!"B {b.title} {b.price}"
+
 instance : LT Book where
-  lt a b := a.title < b.title
+  lt a b := a.price < b.price
 
 instance : DecidableRel (fun (a b : Book) => a < b) :=
-  fun a b => String.decidableLT a.title b.title
+  fun a b => Float.decLt a.price b.price
 
-def books := List.range 100 |>.map (λ n => Book.mk s!"{n}" n.toFloat)
+def books := List.range 12 |>.map (λ n => Book.mk s!"{n}" n.toFloat)
+
+#eval mkTree₁ books |>.toFormat
 
 /- Both `search` and `mkTree₁` need to use the same field for
    insertion and lookup.-/
 
---#eval mkTree₁ books
---#eval search (·.title) "5" (mkTree₁ books)
+-- #eval mkTree₁ books
+#eval search (fun x => x.title) "10" (mkTree₁ books)
 
 end
 
