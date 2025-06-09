@@ -1,5 +1,7 @@
 import Fad.Chapter1
 import Fad.«Chapter1-Ex»
+import Mathlib.Order.BoundedOrder.Basic
+import Mathlib.Order.Interval.Finset.Defs
 
 namespace Chapter5
 
@@ -299,6 +301,17 @@ def bsort₀ {β : Type} [BEq β] (rng : List β)
   [fun s => s.toList[0]!,fun s => s.toList[1]!]
   ["ba", "ab", "aab", "bba"]
 -/
+
+instance : BoundedOrder Char where
+  top := ⟨1114111, by decide⟩
+  bot := ⟨0, by decide⟩
+  le_top x := x.valid.by_cases
+    (fun h => (h.trans (by decide)).le)
+    (fun h => Nat.le_of_lt_add_one h.right)
+  bot_le x := Nat.zero_le x.val.toNat
+
+-- #eval (Finset.Icc ⊥ ⊤ : Finset Char)
+
 
 end Bucketsort
 

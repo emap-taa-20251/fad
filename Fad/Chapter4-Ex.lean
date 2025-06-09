@@ -153,7 +153,7 @@ def partition {α : Type} (p : α → Bool) : List α → List α × List α :=
 
 namespace BST2
 
-def partition3 [LT a] [DecidableRel (α := a) (· < ·)] 
+def partition3 [LT a] [DecidableRel (α := a) (· < ·)]
  [DecidableRel (α := a) (· = ·)]
  (y : a) (xs : List a) : (List a × List a × List a) :=
  let op x acc :=
@@ -163,11 +163,11 @@ def partition3 [LT a] [DecidableRel (α := a) (· < ·)]
      else (us, vs, x :: ws)
  xs.foldr op ([], [], [])
 
-partial def mkTree₂ : (xs : List Nat) → Tree (List Nat)
+partial def mkTree₃ : (xs : List Nat) → Tree (List Nat)
 | [] => .null
 | (x :: xs) =>
    match partition3 x (x :: xs) with
-   | (us, vs, ws) => node (mkTree₂ us) vs (mkTree₂ ws)
+   | (us, vs, ws) => node (mkTree₃ us) vs (mkTree₃ ws)
 
 
 end BST2
@@ -216,7 +216,7 @@ def union₂ [Inhabited a] [LT a] [DecidableEq a] [DecidableRel (α := a) (· < 
 end DSet
 
 
--- # Exercicio 4.16 - see Chapter4.lean 
+-- # Exercicio 4.16 - see Chapter4.lean
 
 
 -- # Exercicio 4.17
