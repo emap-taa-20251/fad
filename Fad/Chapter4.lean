@@ -238,7 +238,6 @@ inductive Tree (a : Type) : Type
 | node : Nat → (Tree a) → a → (Tree a) → Tree a
 deriving Nonempty, Inhabited
 
-/-
 open Std.Format in
 
 def Tree.toFormat [ToString a] : (t : Tree a) → Std.Format
@@ -249,7 +248,7 @@ def Tree.toFormat [ToString a] : (t : Tree a) → Std.Format
 
 instance [ToString a] : Repr (Tree a) where
  reprPrec e _ := e.toFormat
--/
+
 
 def Tree.height : Tree a → Nat
  | .null => 0
@@ -305,7 +304,6 @@ def insert : (x : a) -> Tree a -> Tree a
    if x < y then balance (insert x l) y r else
    if x > y then balance l y (insert x r) else .node h l y r
 
-
 def mkTree : (xs : List a) → Tree a :=
  List.foldr insert (.null : Tree a)
 
@@ -345,6 +343,34 @@ def insert₁ : (x : a) -> Tree a -> Tree a
 
 def mkTree₁ : List a → Tree a :=
   List.foldr insert₁ Tree.null
+
+def insert₂ {b : Type} [Ord b] (key: a → b)
+ : (x : a) -> Tree a -> Tree a
+ | x, .null         => node .null x .null
+ | x, .node h l y r =>
+     match compare (key x) (key y) with
+   | .lt => gbalance (insert₂ key x l) y r
+   | .gt => gbalance l y (insert₂ key x r)
+   | .eq => .node h l y r
+
+def mkTree₂ {b : Type} [Ord b] (key: a → b)
+  : List a → Tree a :=
+  List.foldr (insert₂ key) Tree.null
+
+
+/- how to deal with list with duplicated elements -/
+
+instance : Ord (Nat × Nat) where
+  compare a b :=
+   match compare a.1 b.1 with
+   | .eq => compare a.2 b.2
+   | x   => x
+
+/-
+#eval
+  (λ xs => mkTree₂ id xs.zipIdx |> Tree.flatten |>.map (·.1))
+  [1,3,2,1,2]
+-/
 
 def sort : List a → List a :=
   Tree.flatten ∘ mkTree₁

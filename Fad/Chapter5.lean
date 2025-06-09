@@ -3,6 +3,8 @@ import Fad.«Chapter1-Ex»
 
 namespace Chapter5
 
+-- ## Section 5.1 Quicksort
+
 namespace Quicksort
 
 variable {a : Type} [h₁ : LT a] [h₂ : DecidableRel (α := a) (· < ·)]
@@ -58,9 +60,9 @@ def qsort₂ [Ord a] (f : a → a → Ordering) : List a → List a
 #eval qsort₂ compare ['c','a','b']
 -/
 
-
 end Quicksort
 
+-- ## Section 5.2 MergeSort
 
 namespace Mergesort
 
@@ -189,16 +191,13 @@ def mkPair (n : Nat) (xs : List a) : (Tree a × List a) :=
 def mkTree₁ (as : List a) : Tree a :=
   mkPair as.length as |>.1
 
-
 def msort₂ (xs : List a) : List a :=
   (Tree.flatten ∘ mkTree₁) xs
-
 
 def pairWith (f : a → a → a) : List a → List a
  | []             => []
  | [x]            => [x]
  | (x :: y :: xs) => f x y :: pairWith f xs
-
 
 def mkTree₂ : List a → Tree a
  | []  => .null
@@ -206,17 +205,14 @@ def mkTree₂ : List a → Tree a
    unwrap (until' single (pairWith .node) (as.map .leaf))
     |>.getD .null
 
-
 def msort₃ (xs : List a) : List a :=
   (Tree.flatten ∘ mkTree₂) xs
-
 
 def msort₄ : List a → List a
  | []   => []
  | as   =>
    unwrap (until' single (pairWith merge) (as.map wrap))
     |>.getD []
-
 
 def msort₅ : List a → List a
   | []  => []
@@ -232,36 +228,79 @@ def msort₅ : List a → List a
     let runs := List.foldr op []
   unwrap (until' single (pairWith merge) (runs xs)) |>.getD []
 
-
 end Mergesort
 
 
+-- ## Section 5.3 Heapsort
 
 namespace Heapsort
 
-inductive Tree (α : Type) : Type
- | null : Tree α
- | node : α → Tree α → Tree α → Tree α
+variable {a : Type} [LE a] [ToString a]
+
+inductive Tree (a : Type) : Type
+ | null : Tree a
+ | node : a → Tree a → Tree a → Tree a
  deriving Inhabited
 
-
-def flatten [LE a] [DecidableRel (α := a) (· ≤ ·)] : Tree a → List a
+def flatten [DecidableRel (α := a) (· ≤ ·)] : Tree a → List a
 | Tree.null       => []
 | Tree.node x u v => x :: Mergesort.merge (flatten u) (flatten v)
 
-
 open Std.Format in
 
-def Tree.toFormat [ToString α] : (t: Tree α) → Std.Format
+def Tree.toFormat : (t: Tree a) → Std.Format
 | .null => Std.Format.text "."
 | .node x t₁ t₂ =>
   bracket "(" (f!"{x}" ++
    line ++ nest 2 t₁.toFormat ++ line ++ nest 2 t₂.toFormat) ")"
 
-instance [ToString a] : Repr (Tree a) where
+instance : Repr (Tree a) where
  reprPrec e _ := Tree.toFormat e
 
-
 end Heapsort
+
+
+-- ## Section 5.4 Bucketsort and Radixsort
+
+namespace Bucketsort
+
+variable {α : Type}
+
+inductive Tree (α : Type)
+| leaf : α → Tree α
+| node : List (Tree α) → Tree α
+deriving Repr
+
+
+def Tree.flatten (r : Tree (List α)) : List α :=
+ match r with
+ | .leaf v  => v
+ | .node ts =>
+   List.flatten <| ts.map flatten
+
+def ptn₀ {α β : Type} [BEq β] (rng : List β)
+  (f : α → β) (xs : List α) : List (List α) :=
+  rng.map (λ m => xs.filter (λ x => f x == m))
+
+def mkTree {α β : Type} [BEq β]
+  (rng : List β)
+  (ds : List (α → β)) (xs : List α) : Tree (List α) :=
+  match ds with
+  | []       => .leaf xs
+  | d :: ds' =>
+    .node ((ptn₀ rng d xs).map (mkTree rng ds'))
+
+def bsort₀ {β : Type} [BEq β] (rng : List β)
+  (ds : List (α → β)) (xs : List α) : List α :=
+  Tree.flatten (mkTree rng ds xs)
+
+/-
+#eval bsort₀ "abc".toList
+  [fun s => s.toList[0]!,fun s => s.toList[1]!]
+  ["ba", "ab", "aab", "bba"]
+-/
+
+end Bucketsort
+
 
 end Chapter5

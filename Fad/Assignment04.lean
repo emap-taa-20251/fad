@@ -92,7 +92,7 @@ end
 
 section
 open Chapter5.Quicksort (qsort₂)
-open Chapter4.BST2 (search mkTree mkTree₁)
+open Chapter4.BST2 (search mkTree mkTree₁ mkTree₂)
 
 structure Book where
   title : String
@@ -108,15 +108,23 @@ instance : LT Book where
 instance : DecidableRel (fun (a b : Book) => a < b) :=
   fun a b => Float.decLt a.price b.price
 
-def books := List.range 12 |>.map (λ n => Book.mk s!"{n}" n.toFloat)
-
-#eval mkTree₁ books |>.toFormat
+def books := List.range 12
+  |>.map (λ n => Book.mk s!"{n}" n.toFloat)
 
 /- Both `search` and `mkTree₁` need to use the same field for
    insertion and lookup.-/
 
--- #eval mkTree₁ books
-#eval search (fun x => x.title) "10" (mkTree₁ books)
+instance : Ord Float where
+  compare a b :=
+    if      a < b then Ordering.lt
+    else if a > b then Ordering.gt
+    else Ordering.eq
+
+/-
+#eval
+  let tb := mkTree₂ (·.price) books
+  search (·.price) 10 tb
+-/
 
 end
 
