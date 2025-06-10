@@ -111,13 +111,20 @@ def median (xs : List a) : a :=
   select₀ k xs
 
 
-partial def group (n : Nat) (xs : List a) : List (List a) :=
- match xs with
- | [] => []
- | xs =>
-  let p := xs.splitAt n
-  p.1 :: (group n p.2)
+def group (n : Nat) (xs : List a) : List (List a) :=
+  if      h₁ : n = 0   then []
+  else if h₂ : xs = [] then []
+  else
+   let p := xs.splitAt n
+   have : xs.length - n < xs.length := by
+    induction xs with
+    | nil => simp at *
+    | cons b bs ih =>
+      simp ; omega
+   p.1 :: (group n p.2)
+ termination_by xs.length
 
+-- #eval group 5 (List.range' 1 12)
 
 /- `qsort₁` or `qsort` ? -/
 def medians : List a → List a :=
