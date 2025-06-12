@@ -1,8 +1,8 @@
 import Fad.Chapter1
 import Fad.«Chapter1-Ex»
 
-namespace Chapter3
 
+namespace Chapter3
 open List (reverse tail cons)
 
 -- # Section 3.1 Symmetric lists
@@ -599,23 +599,94 @@ where
 
 -- #eval [3,1,6,8,9,0,5] |>.foldl (λ a r => consRA r a) nilRA
 
+
 /- # Section 3.3 Arrays -/
 
-def listArray (xs : List α) : Array α :=
-  xs.toArray
+class Ix (α : Type) extends Ord α where
+  inRange : (α × α) → α → Bool
+  range : (α × α) → List α
+  index : (α × α) → α → Nat
+  rangeSize : (α × α) → Nat
 
-def accumArray (f : α → β → α) (ini : α) (r : Nat)
-               (xs : List (Nat × β)) : Array α :=
- let helper (i : Nat) :=
-    xs.filter (·.1 = i) |>.foldl (λ ac p ↦ f ac p.2) ini
- (List.range r).map helper |>.toArray
+
+instance instIxNat : Ix Nat where
+  inRange := fun (low, high) i => low ≤ i ∧ i ≤ high
+  range := fun (low, high) => List.range' low (high - low + 1)
+  index := fun (low, high) i =>
+    if low ≤ i ∧ i ≤ high then (i - low) else 0
+  rangeSize := fun (low, high) =>
+    if low ≤ high then (high - low + 1) else 0
+
+instance instIxChar : Ix Char where
+  inRange := fun (low, high) c => low ≤ c ∧ c ≤ high
+  range := fun (low, high) =>
+    if low ≤ high then
+      let lc := low.toNat
+      let hc := high.toNat
+      List.range (hc - lc + 1) |>.map (Char.ofNat <| lc + ·)
+    else []
+  index := fun (low, high) c =>
+    if low ≤ c ∧ c ≤ high then (c.toNat - low.toNat) else 0
+  rangeSize := fun (low, high) =>
+    if low ≤ high then (high.toNat - low.toNat + 1)  else 0
+
+
+def listArray {i e : Type}  [Ix i] (bnds : i × i) (xs : List e)
+  : Lean.AssocList i e :=
+  (Ix.range bnds).zip xs |>.toAssocList'
+
+-- #eval listArray (0,5) [10, 20, 30, 40, 50] |>.toList
+
+def accumArray₀ {i e v} [Ix i] [BEq i] (fcmb : e → v → e) (init : e)
+  (bounds : i × i) (pairs : List (i × v)) : Lean.AssocList i e :=
+  let valid := pairs.filter (fun (idx, _) => Ix.inRange bounds idx)
+  valid.foldl (fun acc (idx, val) =>
+    match acc.find? idx with
+    | some v => acc.replace idx (fcmb v val)
+    | none => acc.cons idx (fcmb init val)
+  ) Lean.AssocList.nil
+
+
+def accumArray {i e v : Type} [Ix i] [BEq i]
+  (cmb : e → v → e) (init : e) (bounds : i × i)
+  (as : List (i × v)) : Lean.AssocList i e :=
+  let all := Ix.range bounds
+  let initial := all.foldl (init := Lean.AssocList.nil)
+    (fun acc idx => acc.cons idx init)
+  let valids := as.filter (fun (idx, _) => Ix.inRange bounds idx)
+  valids.foldl (init := initial) (fun acc (idx, val) =>
+    match acc.find? idx with
+    | some v => acc.replace idx (cmb v val)
+    | none => acc  -- shouldn't happen since we pre-populated
+  )
 
 /-
-#eval accumArray (· + ·) 0 4
- [(1, 20),(1, 56),(1, 10),(1, 20), (2, 30), (1, 40), (2, 50)]
-
-#eval accumArray (flip List.cons) [] 3
-  [(0, "Apple"), (0, "Apricot")]
+#eval accumArray (· + ·) 0 (0,10) [(1,10),(1,10),(2,20),(3,30),(1,80)]
+  |>.toList
 -/
+
+def assocs {i e : Type} [Ix i] [BEq i] (bounds : i × i)
+  (default : e) (arr : Lean.AssocList i e) : List (i × e) :=
+  let indices := Ix.range bounds
+  indices.map (fun i => (i, arr.find? i |>.getD default))
+
+def elems {i e : Type} [Ix i] [BEq i]
+  (bnds : i × i) (default : e) (arr : Lean.AssocList i e)
+  : List e :=
+  assocs bnds default arr |>.map Prod.snd
+
+def indices {i e : Type} [Ix i] [BEq i]
+  (bnds : i × i) (default : e) (arr : Lean.AssocList i e)
+  : List i :=
+  assocs bnds default arr |>.map Prod.fst
+
+
+def sort (m : Nat) (xs : List Nat) : List Nat :=
+  let    a := accumArray (· + ·) 0 (0, m) (xs.map ((·, 1)))
+  let copy := Function.uncurry (flip List.replicate)
+  Chapter1.concatMap copy (assocs (0, m) 0 a)
+
+-- #eval sort 6 [4,1,3,3,1,4,0]
+
 
 end Chapter3

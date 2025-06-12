@@ -1,5 +1,7 @@
 import Fad.Chapter1
+import Fad.Chapter3
 import Fad.«Chapter1-Ex»
+import Lean.Data
 import Mathlib.Order.BoundedOrder.Basic
 import Mathlib.Order.Interval.Finset.Defs
 
@@ -267,6 +269,13 @@ end Heapsort
 namespace Bucketsort
 
 variable {α : Type}
+variable {β : Type} [BEq β] [LT β] [DecidableRel (α := β) (· < ·)]
+
+def ordered : List (α → β) → α → α → Bool
+ | []       , _, _ => true
+ | (d :: ds), x, y => (d x < d y) || ((d x == d y) && (ordered ds x y))
+
+-- #eval ordered [(·.toList[0]!),(·.toList[1]!)] "ba" "ab"
 
 inductive Tree (α : Type)
 | leaf : α → Tree α
@@ -280,28 +289,45 @@ def Tree.flatten (r : Tree (List α)) : List α :=
  | .node ts =>
    List.flatten <| ts.map flatten
 
-def ptn₀ {α β : Type} [BEq β] (rng : List β)
-  (f : α → β) (xs : List α) : List (List α) :=
+def ptn₀ (rng : List β) (f : α → β) (xs : List α) : List (List α) :=
   rng.map (λ m => xs.filter (λ x => f x == m))
 
-def mkTree {α β : Type} [BEq β]
-  (rng : List β)
-  (ds : List (α → β)) (xs : List α) : Tree (List α) :=
+def mkTree (rng : List β) (ds : List (α → β)) (xs : List α) : Tree (List α) :=
   match ds with
   | []       => .leaf xs
   | d :: ds' =>
     .node ((ptn₀ rng d xs).map (mkTree rng ds'))
 
-def bsort₀ {β : Type} [BEq β] (rng : List β)
-  (ds : List (α → β)) (xs : List α) : List α :=
+def bsort₀ (rng : List β) (ds : List (α → β)) (xs : List α) : List α :=
   Tree.flatten (mkTree rng ds xs)
 
+def bsort₁ (rng : List β) : List (α → β) → List α → List α
+| []     , xs => xs
+| d :: ds, xs => Chapter1.concatMap (bsort₁ rng ds) (ptn₀ rng d xs)
+
+
+def rsort₀ (rng : List β) : List (α → β) → List α → List α
+| []     , xs => xs
+| d :: ds, xs => List.flatten (ptn₀ rng d (rsort₀ rng ds xs))
+
+
 /-
-#eval bsort₀ "abc".toList
-  [fun s => s.toList[0]!,fun s => s.toList[1]!]
-  ["ba", "ab", "aab", "bba"]
+#eval rsort₀ "abc".toList [(·.toList[0]!),(·.toList[1]!)]
+  ["ba", "ab", "aab", "bba","abb"]
 -/
 
+def ptn₁ {a b : Type} (bnds : b × b) [Chapter3.Ix b] [BEq b]
+ (d : a → b) (xs : List a) : List (List a) :=
+ let snoc xs x := xs ++ [x]
+ let xa := Chapter3.accumArray snoc [] bnds ((xs.map d).zip xs)
+ Chapter3.elems bnds default xa
+
+/-
+#eval ptn₁ ('a','z') (·.toList[0]!)
+  ["ba", "ab", "aab", "bba","abb"]
+-/
+
+/- mathlib classes to be explored
 instance : BoundedOrder Char where
   top := ⟨1114111, by decide⟩
   bot := ⟨0, by decide⟩
@@ -310,10 +336,10 @@ instance : BoundedOrder Char where
     (fun h => Nat.le_of_lt_add_one h.right)
   bot_le x := Nat.zero_le x.val.toNat
 
--- #eval (Finset.Icc ⊥ ⊤ : Finset Char)
+#eval (Finset.Icc ⊥ ⊤ : Finset Char)
+-/
 
 
 end Bucketsort
-
 
 end Chapter5

@@ -337,8 +337,8 @@ open List (replicate) in
 open Function (uncurry) in
 
 def csort (m : Nat) (xs : List Nat) : List Nat :=
-  let a := Chapter3.accumArray Nat.add 0 m (xs.map (·, 1))
-  a.zipIdx.toList.flatMap (uncurry replicate)
+  let a := Chapter3.accumArray Nat.add 0 (0,m) (xs.map (·, 1))
+  a.toList.flatMap (uncurry replicate)
 
 
 /- # Exercicio 5.19 -/

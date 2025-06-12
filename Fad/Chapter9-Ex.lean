@@ -2,17 +2,22 @@ import Fad.Chapter9
 import Fad.Chapter3
 
 namespace Chapter9
-open Chapter3 (accumArray)
+open Chapter3 (accumArray assocs indices)
+
+
+-- # Ex 9.2
 
 def toAdj (g : Graph) : AdjArray :=
-  accumArray (flip List.cons) [] g.1.length (edges g)
+  let n := (nodes g).length
+  accumArray (flip List.cons) [] (1,n) ((edges g).map (λ (a,b,c) => (a, (b,c))))
 
+/- FIXME
 def toGraph (adj : AdjArray) : Graph :=
-  let vs := List.range adj.size
-  let es : List Edge := adj.toList.zipIdx.map (λ (a,b) => (b,a))
-    |>.flatMap
-   (λ (v, ps) => ps.map (λ p => (v, p.1, p.2)))
-  (vs, es)
+ let vs := indices _ _ adj
+ let es : List Edge :=
+  (assocs _ _ adj).flatMap (λ (v, ps) => ps.map (λ p => (v, p.1, p.2)))
+ (vs, es)
+-/
 
 def g : Graph :=
  ([0, 1, 2, 3],

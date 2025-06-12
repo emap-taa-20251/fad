@@ -1,3 +1,4 @@
+import Lean.Data
 
 namespace Chapter9
 
@@ -14,7 +15,6 @@ def souce  (e : Edge) : Vertex := e.1
 def target (e : Edge) : Vertex := e.2.1
 def weight (e : Edge) : Weight := e.2.2
 
-abbrev AdjArray := Array (List (Vertex × Weight))
-
+abbrev AdjArray := Lean.AssocList Vertex (List (Vertex × Weight))
 
 end Chapter9

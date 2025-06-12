@@ -1,7 +1,6 @@
 import Fad.Chapter3
 import Fad.Chapter1
 import Fad.«Chapter1-Ex»
-import Lean.Data.AssocList
 
 namespace Chapter3
 
