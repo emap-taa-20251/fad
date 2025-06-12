@@ -1,6 +1,7 @@
 import Fad.Chapter1
-import Fad.Chapter3
 import Fad.«Chapter1-Ex»
+import Fad.Chapter3
+
 import Lean.Data
 import Mathlib.Order.BoundedOrder.Basic
 import Mathlib.Order.Interval.Finset.Defs
