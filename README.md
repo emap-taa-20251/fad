@@ -106,7 +106,7 @@ Along the way, readers gain experience not only in algorithm design, but also in
 
 ### Part Four: Thinning Algorithms
 
-1.  Introduction to thinning
+1.  Introduction to thinning (@felipponn)
 
     - [ ] 10.1 Theory
     - [ ] 10.2 Paths in a layered network
@@ -131,7 +131,7 @@ Along the way, readers gain experience not only in algorithm design, but also in
 
 ### Part Five: Dynamic Programming
 
-1.  Efficient recursions
+1.  Efficient recursions (@BXimenaGomez123)
 
     - [ ] 13.1 Two numeric examples
     - [ ] 13.2 Knapsack revisited
