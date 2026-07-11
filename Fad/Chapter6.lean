@@ -171,19 +171,6 @@ partial def qsort : List a → List a
     let p := partition3 (pivot xs) xs
     qsort p.1 ++ p.2.1 ++ qsort p.2.2
 
-
-/- this function breaks with k > xs.length -/
-partial def select
-  (k : Nat) (xs : List a) (ok : k ≤ xs.length) : a :=
-  match partition3 (pivot xs) xs with
-  | (us, vs, ws) =>
-    let m := us.length
-    let n := vs.length
-    if      h₁ : k ≤ m then select k us (by grind)
-    else if h₂ : k ≤ m + n then vs[k - m - 1]'(by grind)
-    else if k > m + n then select (k - m - n) ws (by sorry)
-    else panic! "unreachable code"
-
 theorem partition3_length {a : Type} [LT a] [DecidableRel (α := a) (· < ·)]
  [DecidableRel (α := a) (· = ·)]
  (y :a) (xs : List a) :
@@ -194,6 +181,17 @@ theorem partition3_length {a : Type} [LT a] [DecidableRel (α := a) (· < ·)]
   induction' xs with x xs ih
   . rfl
   . grind [partition3]
+
+/- I can't proof the termination -/
+partial def select (k : Nat) (xs : List a) (ok : k ≤ xs.length) : a :=
+  let us := (partition3 (pivot xs) xs).1
+  let vs := (partition3 (pivot xs) xs).2.1
+  let ws := (partition3 (pivot xs) xs).2.2
+  let m := us.length
+  let n := vs.length
+  if      h₁ : k ≤ m      then select k us (by grind)
+  else if h₂ : k ≤ m + n  then vs[k - m - 1]
+  else                         select (k - m - n) ws (by grind [partition3_length])
 
 /- may not be necessary -/
 def select' (k : Nat) (xs : List a) (q: k ≤ xs.length): a :=
@@ -206,22 +204,36 @@ def select' (k : Nat) (xs : List a) (q: k ≤ xs.length): a :=
      let ws := (partition3 (pivot xs) xs).2.2
      let m := us.length
      let n := vs.length
-     if      h₁:  k ≤ m     then   help k us (by omega) fuel
+     if      h₁:  k ≤ m     then help k us (by omega) fuel
      else if h₂:  k ≤ m + n then vs[k - m - 1]
-     else                        help (k-m-n) ws (by
-     simp [m, n]; rw [partition3_length]; simp [q]) fuel
+     else                        help (k-m-n) ws (by grind [partition3_length]) fuel
   termination_by fuel
   help k xs q xs.length
 
 -- # Section 6.3: selection from two set
 
-def select2₀ (k: Nat) (as bs : List a): a :=
-  (merge as bs)[k]!
+theorem merge_length_eq_add_lenght {a : Type} [LE a] [DecidableRel (α := a) (· ≤ ·)]
+  (as bs : List a) : (merge as bs).length = as.length + bs.length := by
+  induction as generalizing bs with
+  | nil => simp [merge]
+  | cons a₀ as ih =>
+    simp_all
+    induction bs generalizing a₀ as with
+    | nil => simp [merge]
+    | cons b₀ bs ih2 =>
+      simp [merge]
+      split_ifs
+      all_goals
+        simp_all
+        linarith
 
-def select2 (k : Nat) (as bs : List a) : a :=
+def select2₀ (k: Nat) (as bs : List a) (ok : k < as.length + bs.length): a :=
+  (merge as bs)[k]'(by grind [merge_length_eq_add_lenght])
+
+def select2 (k : Nat) (as bs : List a)  (ok : k < as.length + bs.length): a :=
   match as, bs with
-  | [], bs => bs[k]!
-  | as, [] => as[k]!
+  | [], bs => bs[k]'(by simp_all)
+  | as, [] => as[k]'(by simp_all)
   | a₀ :: as, b₀ :: bs =>
     let p  := (a₀ :: as).length / 2
     let q  := (b₀ :: bs).length / 2
@@ -237,10 +249,10 @@ def select2 (k : Nat) (as bs : List a) : a :=
       simp_all
     )
     let vs := ((b₀ :: bs).drop q).tail
-    if      a ≤ b ∧ k ≤ p + q then select2 k (a₀ :: as) us
-    else if a ≤ b ∧ k ≤ p + q then select2 (k - p - 1) ys (b₀ :: bs)
-    else if b ≤ a ∧ k ≤ p + q then select2 k xs (b₀ :: bs)
-    else                           select2 (k - q - 1) (a₀ :: as) vs
+    if      h₁: a ≤ b ∧ k ≤ p + q then select2 k (a₀ :: as) us (by grind)
+    else if h₂: a ≤ b             then select2 (k - p - 1) ys (b₀ :: bs) (by grind)
+    else if h₃: b ≤ a ∧ k ≤ p + q then select2 k xs (b₀ :: bs) (by grind)
+    else                           select2 (k - q - 1) (a₀ :: as) vs (by grind)
 termination_by as.length + bs.length
 
 -- #eval select2 6 [1, 4, 4, 7, 8, 11, 15] [2, 5, 9, 11, 15, 16, 20]
@@ -250,33 +262,57 @@ termination_by as.length + bs.length
 -- #check _root_.Tree
 abbrev BTree := Chapter4.BST2.Tree
 
-def selectT₀ (k : Nat) (t₁ t₂ : BTree a) : a :=
-  (merge (t₁.flatten) (t₂.flatten))[k]!
+def selectT₀ (k : Nat) (t₁ t₂ : BTree a) (ok : k < t₁.flatten.length + t₂.flatten.length): a :=
+  (merge (t₁.flatten) (t₂.flatten))[k]'(by grind [merge_length_eq_add_lenght])
 
-def index₀ (t : BTree a) (k : Nat) : a :=
-  (t.flatten)[k]!
+def index₀ (t : BTree a) (k : Nat) (ok : k < t.flatten.length): a :=
+  (t.flatten)[k]
 
-def index (t : BTree a) (k : Nat) : a :=
+def index (t : BTree a) (k : Nat) (ok : k < t.flatten.length): a :=
   match t with
   | .null => default
   | .node _ l x r =>
-    let p := l.height
-    if      k < p then index l k
-    else if k = p then x
-    else               index r (k - p - 1)
+    let p := l.flatten.length
+    if      h₁: k < p then index l k (by grind)
+    else if h₂: k = p then x
+    else                   index r (k - p - 1) (by grind [Tree.flatten])
 
-def selectT (k : Nat) (t₁ t₂ : BTree a) : a :=
+theorem index_eq_index₀ {a : Type} [LE a] [DecidableRel (α := a) (· ≤ ·)] [Inhabited a]
+(t : BTree a) (k : Nat) (ok : k < t.flatten.length) :
+  index t k ok = index₀ t k ok := by
+    induction t generalizing k with
+    | null => grind [index, Tree.flatten]
+    | node h l x r lih rih =>
+      simp_all [index, index₀, Tree.flatten]
+      split_ifs with h1 h2 <;> grind
+
+def selectT (k : Nat) (t₁ t₂ : BTree a)
+    (ok : k < t₁.flatten.length + t₂.flatten.length) : a :=
   match t₁, t₂ with
-  | t₁ ,             .null           => index t₁ k
-  | .null ,         t₂               => index t₂ k
-  | .node h₁ l₁ a r₁, .node h₂ l₂ b r₂ =>
-    let p := l₁.height
-    let q := l₂.height
-    if      a ≤ b ∧ k ≤ p + q then selectT k (.node h₁ l₁ a r₁) l₂
-    else if a ≤ b             then selectT (k - p - 1) r₁ (.node h₂ l₂ b r₂)
-    else if b ≤ a ∧ k ≤ p + q then selectT k l₁ (.node h₂ l₂ b r₂)
-    else                           selectT (k - q - 1) (.node h₁ l₁ a r₁) r₂
-
-
+  | t₁ ,             .null           => index t₁ k (by simp_all [Tree.flatten])
+  | .null ,         t₂               => index t₂ k (by simp_all [Tree.flatten])
+  | .node h₁ l₁ x r₁, .node h₂ l₂ y r₂ =>
+    let p := l₁.flatten.length
+    let q := l₂.flatten.length
+    if ih₁ : x ≤ y ∧ k ≤ p + q then
+      selectT k (.node h₁ l₁ x r₁) l₂ (by
+        simp_all [Tree.flatten]
+        omega
+      )
+    else if ih₂ : x ≤ y then
+      selectT (k - p - 1) r₁ (.node h₂ l₂ y r₂) (by
+        simp_all [Tree.flatten]
+        omega
+      )
+    else if ih₃ : y ≤ x ∧ k ≤ p + q then
+      selectT k l₁ (.node h₂ l₂ y r₂) (by
+        simp_all [Tree.flatten]
+        omega
+      )
+    else
+      selectT (k - q - 1) (.node h₁ l₁ x r₁) r₂ (by
+        simp_all [Tree.flatten]
+        omega
+      )
 
 end Chapter6
