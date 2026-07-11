@@ -6,9 +6,9 @@ import Fad.«Chapter4-Ex»
 namespace Chapter6
 
 open Chapter1 (unwrap until' single)
-open Chapter5.Mergesort (pairWith halve length_halve_fst length_halve_snd)
+open Chapter5.Mergesort (merge pairWith halve length_halve_fst length_halve_snd)
 open Chapter5.Quicksort (qsort₁)
-open Chapter4.BST2 (partition3)
+open Chapter4.BST2 (partition3 Tree rotl Tree.height)
 
 
 -- # Section 6.1: minimum and maximum
@@ -43,6 +43,30 @@ def minimum : List a → a :=
 
 def maximum : List a → a :=
   foldr1 max
+
+theorem maximum_eq_foldrmax {a : Type} [LinearOrder a] [Inhabited a]
+  (x : a) (xs : List a)
+  : maximum (x::xs) = xs.foldr max x := by
+  simp [maximum]
+  induction xs generalizing x with
+  | nil => rfl
+  | cons y ys ih =>
+    simp [foldr1, ← ih]
+    induction ys generalizing x y with
+    | nil => exact max_comm x y
+    | cons z zs ih2 => grind [foldr1]
+
+theorem minimum_eq_foldrmin {a : Type} [LinearOrder a] [Inhabited a]
+  (x : a) (xs : List a)
+  : minimum (x::xs) = xs.foldr min x := by
+  simp [minimum]
+  induction xs generalizing x with
+  | nil => rfl
+  | cons y ys ih =>
+    simp [foldr1, ← ih]
+    induction ys generalizing x y with
+    | nil => exact min_comm x y
+    | cons z zs ih2 => grind [foldr1]
 
 def minmax₀ : List a → (a × a)
   | []      => default
@@ -131,6 +155,7 @@ def medians : List a → List a :=
   let middle (xs : List a) := xs[((xs.length + 1) / 2) - 1]!
   List.map (middle ∘ qsort₁) ∘ group 5
 
+-- #eval medians (List.range' 1 12)
 
 /- `select₀` or `select` ? -/
 def pivot : List a → a
@@ -154,12 +179,11 @@ partial def select
   | (us, vs, ws) =>
     let m := us.length
     let n := vs.length
-    if         h₁ : k ≤ m then select k us (by sorry)
-    else if h₂ : k ≤ m + n then vs[k - m - 1]'(by sorry)
+    if      h₁ : k ≤ m then select k us (by grind)
+    else if h₂ : k ≤ m + n then vs[k - m - 1]'(by grind)
     else if k > m + n then select (k - m - n) ws (by sorry)
     else panic! "unreachable code"
 
-/- to be rewritten -/
 theorem partition3_length {a : Type} [LT a] [DecidableRel (α := a) (· < ·)]
  [DecidableRel (α := a) (· = ·)]
  (y :a) (xs : List a) :
@@ -167,52 +191,9 @@ theorem partition3_length {a : Type} [LT a] [DecidableRel (α := a) (· < ·)]
   (partition3 y xs).2.1.length +
   (partition3 y xs).1.length =
   xs.length := by
-  induction xs with
-  | nil => simp [partition3]
-  | cons x xs ih =>
-    simp [partition3]
-    by_cases k: x < y
-    · repeat rw [← partition3]
-      simp [k]
-      rw [← ih]
-      rfl
-    by_cases l: x > y
-    · simp at *
-      repeat rw [← partition3]
-      repeat simp [k]
-      rw [← ih]
-      by_cases m: x = y
-      · simp [m]
-        rw [← add_assoc]
-        rw[add_assoc]
-        nth_rewrite 3 [add_comm]
-        rfl
-      simp [m]
-      nth_rewrite 2 [add_assoc]
-      nth_rewrite 3 [add_comm]
-      rw [← add_assoc]
-      rw[add_assoc]
-      nth_rewrite 3 [add_comm]
-      rw [← add_assoc]
-    by_cases m: x = y
-    · simp [k]
-      simp at *
-      simp [m]
-      repeat rw [← partition3]
-      rw [← add_assoc]
-      rw[add_assoc]
-      nth_rewrite 3 [add_comm]
-      rw [← add_assoc]
-      rw [ih]
-    simp [k, m]
-    repeat rw [← partition3]
-    nth_rewrite 2 [add_assoc]
-    nth_rewrite 3 [add_comm]
-    rw [← add_assoc]
-    rw[add_assoc]
-    nth_rewrite 3 [add_comm]
-    rw [← add_assoc]
-    rw [ih]
+  induction' xs with x xs ih
+  . rfl
+  . grind [partition3]
 
 /- may not be necessary -/
 def select' (k : Nat) (xs : List a) (q: k ≤ xs.length): a :=
@@ -231,5 +212,71 @@ def select' (k : Nat) (xs : List a) (q: k ≤ xs.length): a :=
      simp [m, n]; rw [partition3_length]; simp [q]) fuel
   termination_by fuel
   help k xs q xs.length
+
+-- # Section 6.3: selection from two set
+
+def select2₀ (k: Nat) (as bs : List a): a :=
+  (merge as bs)[k]!
+
+def select2 (k : Nat) (as bs : List a) : a :=
+  match as, bs with
+  | [], bs => bs[k]!
+  | as, [] => as[k]!
+  | a₀ :: as, b₀ :: bs =>
+    let p  := (a₀ :: as).length / 2
+    let q  := (b₀ :: bs).length / 2
+    let xs := (a₀ :: as).take p
+    let a  := ((a₀ :: as).drop p).head (by
+      have h: p < (a₀ :: as).length := by grind
+      simp_all
+    )
+    let ys := ((a₀ :: as).drop p).tail
+    let us := (b₀ :: bs).take q
+    let b  := ((b₀ :: bs).drop q).head (by
+      have h: q < (b₀ :: bs).length := by grind
+      simp_all
+    )
+    let vs := ((b₀ :: bs).drop q).tail
+    if      a ≤ b ∧ k ≤ p + q then select2 k (a₀ :: as) us
+    else if a ≤ b ∧ k ≤ p + q then select2 (k - p - 1) ys (b₀ :: bs)
+    else if b ≤ a ∧ k ≤ p + q then select2 k xs (b₀ :: bs)
+    else                           select2 (k - q - 1) (a₀ :: as) vs
+termination_by as.length + bs.length
+
+-- #eval select2 6 [1, 4, 4, 7, 8, 11, 15] [2, 5, 9, 11, 15, 16, 20]
+
+-- For some reason, there's a confusion with the Tree of Mathlib
+-- #check Tree
+-- #check _root_.Tree
+abbrev BTree := Chapter4.BST2.Tree
+
+def selectT₀ (k : Nat) (t₁ t₂ : BTree a) : a :=
+  (merge (t₁.flatten) (t₂.flatten))[k]!
+
+def index₀ (t : BTree a) (k : Nat) : a :=
+  (t.flatten)[k]!
+
+def index (t : BTree a) (k : Nat) : a :=
+  match t with
+  | .null => default
+  | .node _ l x r =>
+    let p := l.height
+    if      k < p then index l k
+    else if k = p then x
+    else               index r (k - p - 1)
+
+def selectT (k : Nat) (t₁ t₂ : BTree a) : a :=
+  match t₁, t₂ with
+  | t₁ ,             .null           => index t₁ k
+  | .null ,         t₂               => index t₂ k
+  | .node h₁ l₁ a r₁, .node h₂ l₂ b r₂ =>
+    let p := l₁.height
+    let q := l₂.height
+    if      a ≤ b ∧ k ≤ p + q then selectT k (.node h₁ l₁ a r₁) l₂
+    else if a ≤ b             then selectT (k - p - 1) r₁ (.node h₂ l₂ b r₂)
+    else if b ≤ a ∧ k ≤ p + q then selectT k l₁ (.node h₂ l₂ b r₂)
+    else                           selectT (k - q - 1) (.node h₁ l₁ a r₁) r₂
+
+
 
 end Chapter6
