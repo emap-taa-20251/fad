@@ -1,4 +1,5 @@
 import Fad.Chapter1
+import Fad.API
 
 namespace Chapter13
 open Chapter1 (scanr₀)
@@ -11,16 +12,76 @@ def fib₀ : Nat → Int
 | 1 => 1
 | n + 2 => fib₀ (n + 1) + fib₀ n
 
---#eval fib₀ 10
+def fib₀T : Nat → TimeM Int
+| 0     => TimeM.pure 0
+| 1     => TimeM.pure 1
+| n + 2 => do
+    let x ← fib₀T (n + 1)
+    let y ← fib₀T n
+    ✓ (x + y)
+
+-- The complexity is
+-- #eval [5, 10, 15, 20].map fun n => (n, (fib₀T n).time)
+
+-- #eval fib₀ 10
 
 def tab (f : Nat → Int) (lo hi : Nat) : Array Int :=
   (List.range (hi - lo + 1)).map (fun i => f (lo + i)) |>.toArray
+
+-- Haskell is a lazy  so we will append another tab function using thunk to get the O(n) complexity
+private def badDependency [Inhabited α] : Thunk α :=
+  Thunk.mk fun _ => panic! "undefined lazy-array entry"
+
+def tabulate [Inhabited α]
+    (f : (Nat → Thunk α) → Nat → Thunk α)
+    (bounds : Nat × Nat) : Array (Thunk α) :=
+  let (lo, hi) := bounds
+  if hi < lo then
+    #[]
+  else
+    (List.range (hi - lo + 1)).foldl
+      (fun cells k =>
+        let i := lo + k
+        let fetch := fun j =>
+          match cells[j - lo]? with
+          | some cell => cell
+          | none      => badDependency
+        cells.push (f fetch i))
+      #[]
+
+def tabulateT [Inhabited α]
+    (f : (Nat → Thunk α) → Nat → Thunk α)
+    (bounds : Nat × Nat) : TimeM (Array (Thunk α)) :=
+  let (lo, hi) := bounds
+  if hi < lo then
+    TimeM.pure #[]
+  else
+    (List.range (hi - lo + 1)).foldl
+      (fun timedCells k => do
+        let cells ← timedCells
+        let i := lo + k
+        let fetch := fun j =>
+          match cells[j - lo]? with
+          | some cell => cell
+          | none      => badDependency
+        ✓ (cells.push (f fetch i)))
+      (TimeM.pure #[])
+
+private def forceAt [Inhabited α]
+    (cells : Array (Thunk α)) (bounds : Nat × Nat) (i : Nat) : α :=
+  let (lo, _) := bounds
+  match cells[i - lo]? with
+  | some cell => cell.get
+  | none      => panic! "index outside lazy-array bounds"
+
 
 def fib₁ (n : Nat) : Int :=
   let rec a : Nat → Int :=
     fun i => if i ≤ 1 then i else a (i - 1) + a (i - 2)
   let arr := tab a 0 n
   arr[n]!
+
+
 
 --#eval fib₁ 10
 
