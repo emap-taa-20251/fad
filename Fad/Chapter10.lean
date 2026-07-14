@@ -288,39 +288,113 @@ theorem thin_idem (r : a → a → Prop)
       · exact hz.1
       · exact htrans z y x hz.2 hy.2
 
--- def foldr1 (f : a → a → a) : List a → a
---   | []    => default
---   | [x]   => x
---   | x::xs => f x (foldr1 f xs)
+/-- Folding with `smaller cost` always returns an element of the list. -/
+private lemma foldrSmaller_mem {α β : Type*} [LE β]
+    [DecidableRel (α := β) (· ≤ ·)] (cost : α → β) (x : α) :
+    ∀ ys : List α,
+      List.foldr (fun u v => cond (cost u ≤ cost v) u v) x ys ∈ x :: ys := by
+  intro ys
+  induction' ys with z zs ih
+  · simp
+  · simp only [List.foldr_cons]
+    by_cases h : cost z ≤ cost (List.foldr (fun u v => cond (cost u ≤ cost v) u v) x zs)
+    · simp [h]
+    · simp only [h, decide_false, cond_false]
+      rcases List.mem_cons.1 ih with hx | hz
+      · simp [hx]
+      · exact List.mem_cons.2 (Or.inr (List.mem_cons.2 (Or.inr hz)))
 
--- def minWith {a b : Type} [LE b] [Inhabited a]
---   [DecidableRel (α := b) (· ≤ ·)]
---   (f : a → b) (as : List a) : a :=
---   let smaller f x y := cond (f x ≤ f y) x y
---   foldr1 (smaller f) as
+
+/-- Folding with `smaller cost` yields a cost-minimal element of the list. -/
+private lemma foldrSmaller_le {α β : Type*} [LinearOrder β] (cost : α → β) (x : α) :
+    ∀ (ys : List α) (z : α), z ∈ x :: ys →
+      cost (List.foldr (fun u v => cond (cost u ≤ cost v) u v) x ys) ≤ cost z := by
+  intro ys
+  induction' ys with w ws ih
+  · intro z hz
+    simp at hz
+    subst hz
+    simp
+  · intro z hz
+    simp only [List.foldr_cons]
+    set t := List.foldr (fun u v => cond (cost u ≤ cost v) u v) x ws with ht
+    by_cases h : cost w ≤ cost t
+    · simp only [h, decide_true, cond_true]
+      rcases List.mem_cons.1 hz with hzx | hz'
+      · rw [hzx]; exact le_trans h (ih x (by simp))
+      · rcases List.mem_cons.1 hz' with hzw | hz''
+        · rw [hzw]
+        · exact le_trans h (ih z (by simp [hz'']))
+    · simp only [h, decide_false, cond_false]
+      have hwt : cost t ≤ cost w := le_of_lt (lt_of_not_ge h)
+      rcases List.mem_cons.1 hz with hzx | hz'
+      · rw [hzx]; exact ih x (by simp)
+      · rcases List.mem_cons.1 hz' with hzw | hz''
+        · rw [hzw]; exact hwt
+        · exact ih z (by simp [hz''])
+
+/-- `minWith cost` returns an element of the (non-empty) list. -/
+theorem minWith_mem {α β : Type*} [Inhabited α] [LE β]
+    [DecidableRel (α := β) (· ≤ ·)] (cost : α → β) :
+    ∀ {xs : List α}, xs ≠ [] → minWith cost xs ∈ xs := by
+  intro xs hxs
+  match xs with
+  | [] => exact absurd rfl hxs
+  | x :: xs => exact foldrSmaller_mem cost x xs
+
+/-- `minWith cost` returns a cost-minimal element of the list. -/
+theorem minWith_le {α β : Type*} [Inhabited α] [LinearOrder β] (cost : α → β) :
+    ∀ {xs : List α}, ∀ z ∈ xs, cost (minWith cost xs) ≤ cost z := by
+  intro xs
+  match xs with
+  | [] => intro z hz; simp at hz
+  | x :: xs => intro z hz; exact foldrSmaller_le cost x xs z hz
 
 /-- **Thin introduction.**  `MinWith cost = MinWith cost · ThinBy r`,
     provided `x ⪯ y ⇒ cost x ≤ cost y`. This is the law that turns an
     optimisation problem into a thinning problem. -/
-theorem thin_introduction [LE b] [DecidableRel (α := b) (· ≤ ·)]
+theorem thin_introduction [LinearOrder b]
     (r : a → a → Prop)
-    (cost : a → b) (hrefl : ∀ x, r x x)
+    (cost : a → b)
     (xs ys : List a)
     (hmono : ∀ x y, r x y → cost x ≤ cost y)
     (h : ThinBy r xs ys) :
-    (minWith cost xs) = minWith cost ys := by
-  sorry
+  cost (minWith cost xs) = cost (minWith cost ys) := by
+  obtain ⟨hsub, hdom⟩ := h
+  by_cases hxs : xs = []
+  · subst hxs
+    rw [List.sublist_nil.1 hsub]
+  · have hys : ys ≠ [] := by
+      rintro rfl
+      obtain ⟨y, hy, _⟩ := hdom _ (minWith_mem cost hxs)
+      simp at hy
+    have hmemx : minWith cost xs ∈ xs := minWith_mem cost hxs
+    have hl : cost (minWith cost xs) ≤ cost (minWith cost ys) := by
+      have hmy : minWith cost ys ∈ ys := minWith_mem cost hys
+      exact minWith_le cost (minWith cost ys) (hsub.subset hmy)
+    have hr : cost (minWith cost xs) ≥ cost (minWith cost ys) := by
+      obtain ⟨y, hymem, hry⟩ := hdom _ hmemx
+      exact le_trans (minWith_le cost y hymem) (hmono y (minWith cost xs) hry)
+    grind
 
 /-- `wrap x = [x]`. -/
 def wrap (x : a) : List a := [x]
 
 /-- **Thin elimination.**  `wrap · MinWith cost ← ThinBy r`,
     provided `cost x ≤ cost y ⇒ x ⪯ y`. Dual to thin introduction. -/
-theorem thin_elimination {β : Type*} [LE β] [DecidableRel (α := β) (· ≤ ·)]
+theorem thin_elimination {β : Type*} [LinearOrder β]
     (r : a → a → Prop) (cost : a → β)
     (hmono : ∀ x y, cost x ≤ cost y → r x y) :
-    ∀ xs : List a, ThinBy r xs (wrap (minWith cost xs)) := by
-  sorry
+    ∀ (xs : List a), xs ≠ [] → ThinBy r xs (wrap (minWith cost xs)) := by
+  intro xs hxs
+  constructor
+  · have h₁ := minWith_mem cost hxs
+    simpa [wrap]
+  · intro x hx
+    simp [wrap]
+    have h₂ := minWith_le cost x hx
+    apply hmono at h₂
+    exact h₂
 
 /-- **Thin-map law** (first flavour).  `map f · ThinBy r ← ThinBy r · map f`,
     provided `x ⪯ y ⇒ f x ⪯ f y`. -/
@@ -329,10 +403,28 @@ theorem thin_map (r : a → a → Prop) (f : a → a)
     (xs ys : List a)
     (h : ThinBy r xs ys) :
     ThinBy r (map f xs) (map f ys) := by
-  sorry
+  constructor
+  · have h1 := h.1
+    exact Sublist.map f h1
+  · have h2 := h.2
+    intro x hx
+    simp at hx
+    obtain ⟨z, hz⟩ := hx
+    have h₀ := h2 z hz.1
+    obtain ⟨w, hw⟩ := h₀
+    use f w
+    constructor
+    · simp
+      use w
+      constructor
+      · exact hw.1
+      · rfl
+    · have h₁ := hmono w z hw.2
+      simp [hz] at h₁
+      assumption
 
 /-
-  Remaining laws (left as exercises, as in the book):
+  Remaining laws (exercises):
 
   * Distributive law:
         ThinBy r · concat = ThinBy r · concatMap (ThinBy r)
