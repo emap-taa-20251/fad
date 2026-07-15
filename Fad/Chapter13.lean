@@ -27,7 +27,43 @@ def fib₀T : Nat → TimeM Int
 -- The complexity is exponential
 -- #eval [5, 10, 15, 20].map fun n => (n, (fib₀T n).time)
 
--- Haskell is a lazy language so we will append another tab function using thunk to get the O(n) complexity
+--Litaral translation of tab and fib1
+
+def tabAntigo (f : Nat → Int) (lo hi : Nat) : Array Int :=
+  (List.range (hi - lo + 1)).map (fun i => f (lo + i)) |>.toArray
+
+def tabAntigoT (f : Nat → TimeM Int) (lo hi : Nat) :
+    TimeM (Array Int) := do
+  let indices := List.range (hi - lo + 1)
+
+  let values ← indices.mapM (fun i => f (lo + i))
+
+  TimeM.tick (values.toArray) (2 * values.length)
+
+def fib₁Antigo (n : Nat) : Int :=
+  let rec a : Nat → Int :=
+    fun i => if i ≤ 1 then i else a (i - 1) + a (i - 2)
+  let arr := tabAntigo a 0 n
+  arr[n]!
+
+def fib₁AntigoT (n : Nat) : TimeM Int :=
+  let rec aT : Nat → TimeM Int
+    | 0 => TimeM.pure 0
+    | 1 => TimeM.pure 1
+    | k + 2 => do
+        let x ← aT (k + 1)
+        let y ← aT k
+        ✓ (x + y)
+  do
+    let arr ← tabAntigoT aT 0 n
+    ✓ (arr[n]!)
+
+--#eval (fib₁AntigoT 10).ret
+--#eval (fib₁AntigoT 10).time
+--The Haskell example in the bool was supposed to be O(n),
+--but given that Haskell is lazy, the complexity is O(n^2)
+
+-- So we will append another tab function using thunk to get the O(n) complexity
 private def badDependency [Inhabited α] : Thunk α :=
   Thunk.mk fun _ => panic! "undefined lazy-array entry"
 
