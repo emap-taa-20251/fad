@@ -685,6 +685,21 @@ end LayeredNetwork
 
 -- ## Section 10.3 Coin-changing revisited
 
+/-- Merging two lists that are ordered according to `cmp`. -/
+def merge2By {α : Type*} (cmp : α → α → Bool) : List α → List α → List α
+  | [], ys => ys
+  | xs, [] => xs
+  | x :: xs, y :: ys =>
+      if cmp x y then x :: merge2By cmp xs (y :: ys)
+      else y :: merge2By cmp (x :: xs) ys
+  termination_by xs ys => xs.length + ys.length
+
+/-- `mergeBy :: (a → a → Bool) → [[a]] → [a]`, left as an exercise in the book.
+    Merging sublists at each step is what lets us *maintain* the order of the
+    candidates, which is what makes `thinBy` effective. -/
+def mergeBy {α : Type*} (cmp : α → α → Bool) : List (List α) → List α :=
+  List.foldr (merge2By cmp) []
+
 namespace CoinChanging
 
 /-! The greedy algorithm of Chapter 7 is not guaranteed to produce the smallest
@@ -814,21 +829,6 @@ already produces tuples in that order, it suffices to merge. -/
 
 def cmp₃ (t₁ t₂ : Tuple) : Bool := decide (residue t₂ ≤ residue t₁)
 
-/-- Merging two lists that are ordered according to `cmp`. -/
-def merge2By {α : Type*} (cmp : α → α → Bool) : List α → List α → List α
-  | [], ys => ys
-  | xs, [] => xs
-  | x :: xs, y :: ys =>
-      if cmp x y then x :: merge2By cmp xs (y :: ys)
-      else y :: merge2By cmp (x :: xs) ys
-  termination_by xs ys => xs.length + ys.length
-
-/-- `mergeBy :: (a → a → Bool) → [[a]] → [a]`, left as an exercise in the book.
-    Merging sublists at each step is what lets us *maintain* the order of the
-    candidates, which is what makes `thinBy` effective. -/
-def mergeBy {α : Type*} (cmp : α → α → Bool) : List (List α) → List α :=
-  List.foldr (merge2By cmp) []
-
 def tstep (d : Denom) (ts : List Tuple) : List Tuple :=
   thinBy le₃ (mergeBy cmp₃ (ts.map (extend d)))
 
@@ -862,5 +862,161 @@ info: [1, 0, 1, 0, 0, 1, 0, 1]
 -/
 
 end CoinChanging
+
+-- ## Section 10.4 The knapsack problem
+
+namespace Knapsack
+
+/-! The 0/1 knapsack problem: either an item is chosen or it is not.  There is
+no greedy algorithm for it — packing by decreasing value, by ascending weight,
+or by decreasing value/weight ratio all fail in general. The dynamic
+programming solution of Chapter 13 is more restrictive, in that it depends on
+certain quantities being integers; here we give a thinning algorithm. -/
+
+abbrev Name := String
+abbrev Value := Nat
+abbrev Weight := Nat
+abbrev Item := Name × Value × Weight
+abbrev Selection := List Name × Value × Weight
+
+def name (i : Item) : Name := i.1
+
+/-- Polymorphic: applies both to items and to selections. -/
+def value {γ : Type} (x : γ × Value × Weight) : Value := x.2.1
+
+/-- Polymorphic: applies both to items and to selections. -/
+def weight {γ : Type} (x : γ × Value × Weight) : Weight := x.2.2
+
+instance : Max Selection := ⟨fun x y => if value x ≤ value y then y else x⟩
+instance : Min Selection := ⟨fun x y => if value x ≤ value y then x else y⟩
+
+/-- The items in the thief's room. -/
+def items₁ : List Item :=
+  [("Laptop", 30, 14), ("Television", 67, 31), ("Jewellery", 19, 8), ("CD collection", 50, 24)]
+
+def add (i : Item) (sn : Selection) : Selection :=
+  (name i :: sn.1, value i + value sn, weight i + weight sn)
+
+@[simp] theorem value_add (i : Item) (sn : Selection) :
+    value (add i sn) = value i + value sn := rfl
+
+@[simp] theorem weight_add (i : Item) (sn : Selection) :
+    weight (add i sn) = weight i + weight sn := rfl
+
+def within (w : Weight) (sn : Selection) : Bool := decide (weight sn ≤ w)
+
+/-- `selections` returns all `2^n` subsequences of the given list of items. -/
+def selections (its : List Item) : List Selection :=
+  its.foldr (fun i sns => sns.flatMap (fun sn => [sn, add i sn])) [([], 0, 0)]
+
+/-- `maxWith cost` is dual to `minWith cost`: it selects an element of maximum,
+    rather than minimum, cost. -/
+def maxWith {γ δ : Type*} [LE δ] [Inhabited γ] [DecidableRel (α := δ) (· ≤ ·)]
+    (f : γ → δ) (as : List γ) : γ :=
+  Chapter7.foldr1 (fun x y => cond (f y ≤ f x) x y) as
+
+/-- `swag w ← MaxWith value · filter (within w) · selections` -/
+def swag₀ (w : Weight) (its : List Item) : Selection :=
+  maxWith value ((selections its).filter (within w))
+
+#guard (selections items₁).length = 16
+
+/-! ### Fusing `filter` with `selections`
+
+`choices` generates only those selections whose total weight is at most the
+carrying capacity of the knapsack. This step alone significantly reduces the
+number of selections to consider. -/
+
+def extend (w : Weight) (i : Item) (sn : Selection) : List Selection :=
+  [sn, add i sn].filter (within w)
+
+def choices (w : Weight) (its : List Item) : List Selection :=
+  its.foldr (fun i sns => sns.flatMap (extend w i)) [([], 0, 0)]
+
+#guard (choices 50 items₁).length = 11
+
+/-! ### Introducing thinning
+
+`swag w ← MaxWith value · ThinBy (⪯) · choices w`, where there is no point in
+keeping a selection if there is another selection from the same list of items
+with a greater value and a smaller weight. Note `sn₁ ⪯ sn₂ ⇒ value sn₁ ≥ value
+sn₂`, which is the proviso of thin introduction in the case of `MaxWith`. -/
+
+def le₄ (sn₁ sn₂ : Selection) : Bool :=
+  decide (value sn₂ ≤ value sn₁ ∧ weight sn₁ ≤ weight sn₂)
+
+theorem le₄_refl (sn : Selection) : le₄ sn sn = true := by simp [le₄]
+
+theorem le₄_trans (s₁ s₂ s₃ : Selection) :
+    le₄ s₁ s₂ = true → le₄ s₂ s₃ = true → le₄ s₁ s₃ = true := by
+  simp only [le₄, decide_eq_true_eq]
+  rintro ⟨h₁, h₂⟩ ⟨h₃, h₄⟩
+  exact ⟨h₃.trans h₁, h₂.trans h₄⟩
+
+/-- The proviso of thin introduction for `MaxWith`. -/
+theorem le₄_value (s₁ s₂ : Selection) (h : le₄ s₁ s₂ = true) : value s₂ ≤ value s₁ := by
+  simp only [le₄, decide_eq_true_eq] at h
+  exact h.1
+
+/-- **Key fact (10.2)** for the knapsack: every good extension of `sn₂` is
+    dominated by a good extension of `sn₁`.  Note that the `filter (within w)`
+    is harmless precisely because `sn₁` is no heavier than `sn₂`. -/
+theorem key_fact (w : Weight) (i : Item) (sn₁ sn₂ : Selection) (h : le₄ sn₁ sn₂ = true) :
+    ∀ e₂ ∈ extend w i sn₂, ∃ e₁ ∈ extend w i sn₁, le₄ e₁ e₂ = true := by
+  simp only [le₄, decide_eq_true_eq] at h
+  obtain ⟨hv, hw⟩ := h
+  intro e₂ he₂
+  simp only [extend, List.mem_filter, List.mem_cons,
+    List.not_mem_nil, or_false, within, decide_eq_true_eq] at he₂
+  obtain ⟨hmem, hin⟩ := he₂
+  rcases hmem with rfl | rfl
+  · refine ⟨sn₁, ?_, by simp [le₄, hv, hw]⟩
+    rw [extend, List.mem_filter]
+    refine ⟨by simp, ?_⟩
+    simp only [within, decide_eq_true_eq]
+    exact hw.trans hin
+  · refine ⟨add i sn₁, ?_, ?_⟩
+    · rw [extend, List.mem_filter]
+      refine ⟨by simp, ?_⟩
+      simp only [within, decide_eq_true_eq, weight_add]
+      calc weight i + weight sn₁ ≤ weight i + weight sn₂ := Nat.add_le_add_left hw _
+        _ ≤ w := by simpa using hin
+    · simp only [le₄, decide_eq_true_eq, value_add, weight_add]
+      exact ⟨Nat.add_le_add_left hv _, Nat.add_le_add_left hw _⟩
+
+/-! ### The algorithm
+
+The thinning step is more effective if the selections are kept in order; since
+`extend` produces selections in increasing order of weight, we choose that. -/
+
+def cmp₄ (s₁ s₂ : Selection) : Bool := decide (weight s₁ ≤ weight s₂)
+
+def tstep (w : Weight) (i : Item) (sns : List Selection) : List Selection :=
+  thinBy le₄ (mergeBy cmp₄ (sns.map (extend w i)))
+
+def swag (w : Weight) (its : List Item) : Selection :=
+  maxWith value (its.foldr (tstep w) [([], 0, 0)])
+
+-- The best haul is `Jewellery + Laptop + CDs`, of value 99 and weight 46 —
+-- beating `Television + Laptop` (97) and `Jewellery + Television` (86).
+#guard swag 50 items₁ = (["Laptop", "Jewellery", "CD collection"], 99, 46)
+
+#guard swag 50 items₁ = swag₀ 50 items₁
+
+/-
+  Running time. If all weights are integers, each thinning step brings
+  selections of equal weight together and eliminates all but one of them,
+  maintaining a list of at most `w+1` selections; the list is computed in `Θ(w)`
+  steps, so with `n` items the running time is `O(n*w)`. That only *appears* to
+  be linear: if weights are arbitrary positive reals there is no guarantee that
+  only `w+1` selections are maintained — all `2^n` selections might have to be
+  kept, each with a different total weight and value.
+
+  Exercise 10.21: the other reasonable way to define `selections`.
+  Exercises: the integer knapsack problem, and the fractional knapsack problem
+  (for which a greedy algorithm *does* work).
+-/
+
+end Knapsack
 
 end Chapter10
