@@ -1,7 +1,9 @@
 import Fad.Chapter1
+import Fad.Chapter10
 import Fad.API
 
 namespace Chapter13
+
 open Chapter1 (scanr₀)
 
 
@@ -170,8 +172,10 @@ def bin₁T : Nat → Nat → TimeM Int
 
 --#eval bin₁ 6 3
 --#eval bin₁T 6 3
+--#eval [4, 8, 12, 16].map fun n =>((n, n / 2), (bin₁T n (n / 2)).time)
 
 
+-- For bin2 we need a two dimentianl tab function
 def bin₂ (n r : Nat) : Int := Id.run do
   let mut a : Array ((Nat × Nat) × Int) := #[]
   for i in [0:n+1] do
@@ -187,14 +191,220 @@ def bin₂ (n r : Nat) : Int := Id.run do
 
 --#eval bin₂ 6 3
 
+
 def apl {α : Type} : Nat → (List α → List α) → List α → List α
 | 0, _, acc => acc
 | n + 1, f, acc => apl n f (f acc)
 
-def bin₃ (n r : Nat) : Int :=
+def aplT {α : Type} : Nat → (α → TimeM α) → α → TimeM α
+| 0, _, acc     => TimeM.pure acc
+| n + 1, f, acc => do
+    let next ← f acc
+    aplT n f next
+
+-- scanr0 of chapter 1 always add the initial accumulator q₀ to the end.
+
+--#eval scanr₀ (· + ·) 0 [1, 1, 1, 1]
+--It ends in 0, but in the book the example takes this values [4,3,2,1]
+--So we will defind scar1
+
+def scanr₁ {α : Type} (f : α → α → α) (xs : List α) : List α :=
+  match xs.reverse with
+  | [] => []
+  | q₀ :: rest =>
+      scanr₀ f q₀ rest.reverse
+
+def scanr₁T {α : Type}
+    (f : α → α → α) (xs : List α) : TimeM (List α) :=
+  match xs.reverse with
+  | [] =>
+      TimeM.pure []
+  | q₀ :: rest =>
+      ✓ (scanr₀ f q₀ rest.reverse), rest.length
+
+--#eval scanr₁ (· + ·) [1, 1, 1, 1]
+
+def bin₃Antigo (n r : Nat) : Int :=
   let row := apl (n - r) (scanr₀ (· + ·) 0) (List.replicate (r + 1) 1)
   row.headD 1
 
+--#eval bin₃Antigo 6 3
+
+def bin₃ (n r : Nat) : Int :=
+  let row :=
+    apl (n - r)
+      (scanr₁ (· + ·))
+      (List.replicate (r + 1) 1)
+  row.headD 1
+
+def bin₃T (n r : Nat) : TimeM Int := do
+  let row ←
+    aplT (n - r)
+      (scanr₁T (· + ·))
+      (List.replicate (r + 1) 1)
+  TimeM.pure (row.headD 1)
+
+
+--#eval [10, 20, 40, 80].map fun n => ((n, n / 2), (bin₃T n (n / 2)).time)
 --#eval bin₃ 6 3
+
+-- # Section 13.2
+
+namespace Knapsack
+
+open Chapter10.Knapsack
+  (Name Value Weight Item Selection name value weight add maxWith items₁)
+
+private def emptySelection : Selection :=
+  ([], 0, 0)
+
+def choices : Weight → List Item → List Selection
+| _, [] => [emptySelection]
+| w, i :: its =>
+  if w < weight i then
+    choices w its
+  else
+    let withoutI := choices w its
+    let withI := (choices (w - weight i) its).map (add i)
+    withoutI ++ withI
+
+def choicesT : Weight → List Item → TimeM (List Selection)
+| _, [] => TimeM.pure [emptySelection]
+| w, i :: its => do
+  -- `decide` converts the decidable proposition into a `Bool` before it is
+  -- placed inside `TimeM`.
+  let tooHeavy ← (✓ (decide (w < weight i)))
+  match tooHeavy with
+  | true => choicesT w its
+  | false => do
+      let withoutI ← choicesT w its
+      let remaining ← choicesT (w - weight i) its
+      ✓ (withoutI ++ remaining.map (add i))
+
+--#guard (choices 50 items₁).length = 11
+
+
+def better (sn₁ sn₂ : Selection) : Selection :=
+  if value sn₂ ≤ value sn₁ then sn₁ else sn₂
+
+def betterT (sn₁ sn₂ : Selection) : TimeM Selection :=
+  ✓ (better sn₁ sn₂)
+
+private def maxWithValueT : List Selection → TimeM Selection
+| [] => TimeM.pure emptySelection
+| sn :: sns =>
+  let rec go : Selection → List Selection → TimeM Selection
+    | best, [] => TimeM.pure best
+    | best, candidate :: rest => do
+        let winner ← betterT best candidate
+        go winner rest
+  go sn sns
+
+def swag₀ (w : Weight) (its : List Item) : Selection :=
+  maxWith value (choices w its)
+
+def swag₀T (w : Weight) (its : List Item) : TimeM Selection := do
+  let sns ← choicesT w its
+  maxWithValueT sns
+
+--#guard swag₀ 50 items₁ = (["Laptop", "Jewellery", "CD collection"], 99, 46)
+--#guard (swag₀T 50 items₁).ret = swag₀ 50 items₁
+
+def swag₁ : Weight → List Item → Selection
+| _, [] => emptySelection
+| w, i :: its =>
+  if w < weight i then
+    swag₁ w its
+  else
+    better
+      (swag₁ w its)
+      (add i (swag₁ (w - weight i) its))
+
+def swag₁T : Weight → List Item → TimeM Selection
+| _, [] => TimeM.pure emptySelection
+| w, i :: its => do
+  let tooHeavy ← (✓ (decide (w < weight i)))
+  match tooHeavy with
+  | true => swag₁T w its
+  | false => do
+      let withoutI ← swag₁T w its
+      let bestForRemaining ← swag₁T (w - weight i) its
+      betterT withoutI (add i bestForRemaining)
+
+--#guard swag₁ 50 items₁ = swag₀ 50 items₁
+--#guard (swag₁T 50 items₁).ret = swag₁ 50 items₁
+
+-- ## Dynamic programming with one row
+
+private def foldrT {α β : Type}
+    (f : α → β → TimeM β) (e : β) : List α → TimeM β
+| [] => TimeM.pure e
+| x :: xs => do
+    let acc ← foldrT f e xs
+    f x acc
+
+def step (w : Weight) (i : Item) (row : List Selection) : List Selection :=
+  let wi := weight i
+  let shifted := (row.drop wi).map (add i)
+  List.zipWith better row shifted ++ row.drop (w + 1 - wi)
+
+def stepT (w : Weight) (i : Item) (row : List Selection) :
+    TimeM (List Selection) :=
+  -- The abstract cost is one unit for every position in the row.
+  ✓ (step w i row), row.length
+
+def swag₂ (w : Weight) (its : List Item) : Selection :=
+  let start := List.replicate (w + 1) emptySelection
+  let row := its.foldr (step w) start
+  row.headD emptySelection
+
+def swag₂T (w : Weight) (its : List Item) : TimeM Selection := do
+  let start := List.replicate (w + 1) emptySelection
+  let row ← foldrT (stepT w) start its
+  TimeM.pure (row.headD emptySelection)
+
+--#guard swag₂ 50 items₁ = swag₀ 50 items₁
+--#guard (swag₂T 50 items₁).ret = swag₂ 50 items₁
+--#guard (swag₂T 50 items₁).time = items₁.length * (50 + 1)
+
+--#eval (Chapter13.Knapsack.swag₀T 50 Chapter10.Knapsack.items₁)
+--#eval (Chapter13.Knapsack.swag₁T 50 Chapter10.Knapsack.items₁)
+--#eval (Chapter13.Knapsack.swag₂T 50 Chapter10.Knapsack.items₁)
+
+end Knapsack
+
+-- # Section 13.3
+
+inductive Op where
+  | copy    : Char → Op
+  | replace : Char → Char → Op
+  | delete  : Char → Op
+  | insert  : Char → Op
+deriving Repr, BEq
+
+abbrev Edit := List Op
+
+def ecost : Op → Nat
+| .copy _      => 0
+| .replace _ _ => 3
+| .delete _    => 2
+| .insert _    => 2
+
+def cost : Edit → Nat
+| []        => 0
+| op :: ops => ecost op + cost ops
+
+def pick (x y : Char) : Op :=
+  if x = y then Op.copy x else Op.replace x y
+
+def minByCost : List Edit → Edit
+| []      => []
+| e :: es =>
+  es.foldl
+    (fun best candidate =>
+      if cost candidate < cost best then candidate else best)
+    e
+
+
 
 end Chapter13
