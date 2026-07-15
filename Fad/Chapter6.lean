@@ -1,14 +1,19 @@
 import Fad.Chapter1
+import Fad.Chapter3
 import Fad.Chapter5
 import Fad.«Chapter1-Ex»
 import Fad.«Chapter4-Ex»
+import Fad.«Chapter5-Ex»
 
 namespace Chapter6
 
 open Chapter1 (unwrap until' single)
+open Chapter3 (accumArray elems)
+open Chapter4 (partition)
+open Chapter4.BST2 (partition3 Tree rotl Tree.height)
 open Chapter5.Mergesort (merge pairWith halve length_halve_fst length_halve_snd)
 open Chapter5.Quicksort (qsort₁)
-open Chapter4.BST2 (partition3 Tree rotl Tree.height)
+open Chapter5 (csort)
 
 
 -- # Section 6.1: minimum and maximum
@@ -314,5 +319,72 @@ def selectT (k : Nat) (t₁ t₂ : BTree a)
         simp_all [Tree.flatten]
         omega
       )
+
+-- # Section 6.4: Selection from the complement of a set
+
+def diffL {a : Type} [DecidableEq a] (xs ys : List a) : List a :=
+  xs.filter (· ∉ ys)
+
+infixl:50 " \\\\ " => diffL
+
+-- Lean it's not lazy evaluation, but the min está a pelo menos xs.lenght+1
+def selectC₀ (xs : List Nat) : Nat :=
+  let searchSpace := List.range (xs.length + 1)
+  let remaining := searchSpace \\ xs
+  remaining.headD 0
+
+
+def searchFrom (k : Nat) (xs : List Nat) : Nat :=
+  match k, xs with
+  | k, List.nil => k
+  | k, x::xs =>
+    if k = x then
+      searchFrom (k + 1) xs
+    else
+      k
+
+def selectC₁ (xs : List Nat) : Nat :=
+  searchFrom 0 (qsort₁ xs)
+
+
+def selectC₂ (xs : List Nat) : Nat :=
+  let n := xs.length
+  searchFrom 0 (csort n (xs.filter (· ≤ n)))
+
+
+def selectC₃ (xs : List Nat) : Nat :=
+  let n := xs.length
+  let a := accumArray Nat.add 0 (0, n) ((xs.filter (· ≤ n)).map (·, 1))
+  (elems (0, n) 0 a |>.takeWhile (· ≠ 0)).length
+
+
+partial def selectFrom₀ (a : Nat) (xs : List Nat) : Nat :=
+  if xs.isEmpty then a
+  else
+    let b := a + 1 + (xs.length / 2)
+    let (ys, zs) := xs.partition (fun x => x < b)
+
+    if ys.length = b - a then
+      selectFrom₀ b zs
+    else
+      selectFrom₀ a ys
+
+def selectC₄ (xs : List Nat) : Nat :=
+  selectFrom₀ 0 xs
+
+
+def selectFrom (a n : Nat) (xs : List Nat) : Nat :=
+  if n = 0 then a
+  else
+    let b := a + 1 + (n / 2)
+    let (ys, zs) := partition (· < b) xs
+    let l := ys.length
+    if      l = b - a then selectFrom b (n - l) zs
+    else if l < n     then selectFrom a l ys
+    -- se l>= n, quer dizer que tem números repetidos, retorna 'a' por padrão.
+    else                   a
+
+def selectC (xs : List Nat) : Nat :=
+  selectFrom 0 xs.length xs
 
 end Chapter6
