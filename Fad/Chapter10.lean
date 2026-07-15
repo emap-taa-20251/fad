@@ -439,4 +439,428 @@ theorem thin_map (r : a → a → Prop) (f : a → a)
         ThinBy r · filter p = filter p · ThinBy r     provided (x ⪯ y ∧ p y) ⇒ p x.
 -/
 
+-- ## Section 10.2 Paths in a layered network
+
+namespace LayeredNetwork
+
+/-! A layered network is given by a list of lists of edges, each list describing
+the edges between two adjacent layers. Each edge is a triple `(u,v,w)`, where
+`u` is the source, `v` the target and `w` a numerical weight, not necessarily
+positive. The problem is to find a path from the top layer to the bottom layer
+with minimum total weight. -/
+
+abbrev Vertex := Nat
+abbrev Weight := Int
+abbrev Edge := Vertex × Vertex × Weight
+abbrev Path := List Edge
+abbrev Net := List (List Edge)
+
+def source (e : Edge) : Vertex := e.1
+def target (e : Edge) : Vertex := e.2.1
+def weight (e : Edge) : Weight := e.2.2
+
+def cost (p : Path) : Weight := (p.map weight).sum
+
+/- `thinBy` drags along the instances of the section variable `a` -/
+instance : Max Path := ⟨fun p q => if cost p ≤ cost q then q else p⟩
+instance : Min Path := ⟨fun p q => if cost p ≤ cost q then p else q⟩
+
+@[simp] theorem cost_nil : cost [] = 0 := rfl
+
+@[simp] theorem cost_cons (e : Edge) (p : Path) : cost (e :: p) = weight e + cost p := by
+  simp [cost]
+
+
+/-! ### The network of Figure 10.1
+
+Four layers of four vertices each: `1..4`, `5..8`, `9..12` and `13..16`.  There
+are 27 paths from the top layer to the bottom one. -/
+
+def layer₁ : List Edge := [(1,5,2), (1,6,7), (2,6,1), (3,6,4), (3,7,5), (4,7,2), (4,8,3)]
+def layer₂ : List Edge := [(5,9,5), (6,9,3), (6,10,9), (6,11,8), (7,11,2), (8,11,7), (8,12,1)]
+def layer₃ : List Edge := [(9,13,4), (9,14,8), (10,14,2), (10,15,5), (11,15,6), (11,16,3), (12,16,7)]
+
+/-- The network of Figure 10.1. Note that each list of edges is sorted so that
+    edges with the same source vertex appear together: this is what makes the
+    thinning step below produce just one path per source vertex. -/
+def net₁ : Net := [layer₁, layer₂, layer₃]
+
+
+/-! ### The specification -/
+
+/-- The Cartesian-product function `cp`. -/
+def cp {γ : Type u} : List (List γ) → List (List γ) :=
+  List.foldr (fun xs yss => xs.flatMap (fun x => yss.map (x :: ·))) [[]]
+
+theorem cp_nil {γ : Type u} : cp ([] : List (List γ)) = [[]] := rfl
+
+theorem cp_cons {γ : Type u} (xs : List γ) (xss : List (List γ)) :
+    cp (xs :: xss) = xs.flatMap (fun x => (cp xss).map (x :: ·)) := rfl
+
+#guard cp [["a","b","c"],["d","e"],["f"]] =
+  [["a","d","f"],["a","e","f"],["b","d","f"],["b","e","f"],["c","d","f"],["c","e","f"]]
+
+def linked (e₁ : Edge) : Path → Bool
+  | []      => true
+  | e₂ :: _ => target e₁ == source e₂
+
+def connected : Path → Bool
+  | []      => true
+  | e :: es => linked e es && connected es
+
+/-- `paths = filter connected · cp`. -/
+def paths₀ (net : Net) : List Path := (cp net).filter connected
+
+/-- `mcp ← MinWith cost · paths` -/
+def mcp₀ (net : Net) : Path := minWith cost (paths₀ net)
+
+
+/-! ### Fusing `filter connected` and `cp`
+
+`paths = foldr step [[]]` where `step es ps = [e : p | e ← es, p ← ps, linked e p]`,
+which we write in the equivalent form `step es ps = concat [cons e ps | e ← es]`. -/
+
+def cons (e : Edge) (ps : List Path) : List Path :=
+  (ps.filter (linked e)).map (e :: ·)
+
+def step (es : List Edge) (ps : List Path) : List Path :=
+  es.flatMap (fun e => cons e ps)
+
+def paths (net : Net) : List Path := net.foldr step [[]]
+
+private lemma filter_connected_map (e : Edge) :
+    ∀ ps : List Path, (ps.map (e :: ·)).filter connected = cons e (ps.filter connected) := by
+  intro ps
+  induction ps with
+  | nil => rfl
+  | cons q qs ih =>
+      by_cases h₁ : linked e q = true <;> by_cases h₂ : connected q = true <;>
+        simp_all [cons, connected]
+
+/-- The fusion step: `filter connected · cp = foldr step [[]]`. -/
+theorem paths₀_eq_paths : ∀ net : Net, paths₀ net = paths net := by
+  intro net
+  induction net with
+  | nil => rfl
+  | cons es net ih =>
+      simp only [paths₀] at ih ⊢
+      have h : ∀ e : Edge,
+          ((cp net).map (e :: ·)).filter connected = cons e (paths net) := by
+        intro e
+        rw [filter_connected_map, ih]
+      rw [cp_cons, filter_flatMap]
+      simp only [h]
+      rfl
+
+#guard (paths net₁).length = 27
+#guard (paths net₁) = (paths₀ net₁)
+
+
+/-! ### Introducing thinning
+
+A greedy algorithm is not possible: the source of a minimum-cost path at one
+level may not be among the target vertices of the edges at the next level up.
+The thin-introduction law says we may rewrite the specification as
+
+  `mcp ← MinWith cost · ThinBy (⪯) · paths`
+
+provided `p₁ ⪯ p₂ ⇒ cost p₁ ≤ cost p₂`.  The appropriate choice is the *partial*
+preorder below: there is no point in keeping a path if there is another path
+with the same source vertex and lower cost. -/
+
+def le₂ (p₁ p₂ : Path) : Bool :=
+  decide (p₁.head?.map source = p₂.head?.map source ∧ cost p₁ ≤ cost p₂)
+
+/-- `le₂` is reflexive. -/
+theorem le₂_refl (p : Path) : le₂ p p = true := by simp [le₂]
+
+/-- `le₂` is transitive. -/
+theorem le₂_trans (p q r : Path) : le₂ p q = true → le₂ q r = true → le₂ p r = true := by
+  simp only [le₂, decide_eq_true_eq]
+  rintro ⟨h₁, h₂⟩ ⟨h₃, h₄⟩
+  exact ⟨h₁.trans h₃, h₂.trans h₄⟩
+
+/-- The proviso of thin introduction: `p₁ ⪯ p₂ ⇒ cost p₁ ≤ cost p₂`. -/
+theorem le₂_cost (p q : Path) (h : le₂ p q = true) : cost p ≤ cost q := by
+  simp only [le₂, decide_eq_true_eq] at h
+  exact h.2
+
+/-- The proviso of the **thin-filter law**: `p₁ ⪯ p₂ ∧ linked e p₂ ⇒ linked e p₁`. -/
+theorem linked_of_le₂ (e : Edge) (p₁ p₂ : Path)
+    (h : le₂ p₁ p₂ = true) (h₂ : linked e p₂ = true) : linked e p₁ = true := by
+  simp only [le₂, decide_eq_true_eq] at h
+  obtain ⟨hs, -⟩ := h
+  cases p₁ with
+  | nil => rfl
+  | cons f fs =>
+      cases p₂ with
+      | nil => simp at hs
+      | cons g gs =>
+          simp only [List.head?_cons, Option.map_some] at hs
+          have hs' : source f = source g := by simpa using hs
+          simp only [linked, beq_iff_eq] at h₂ ⊢
+          rw [hs']
+          exact h₂
+
+/-- The proviso of the **thin-map law**: `p₁ ⪯ p₂ ⇒ e : p₁ ⪯ e : p₂`.
+    Note that no context is needed in this direction. -/
+theorem cons_mono (e : Edge) (p₁ p₂ : Path) (h : le₂ p₁ p₂ = true) :
+    le₂ (e :: p₁) (e :: p₂) = true := by
+  simp only [le₂, decide_eq_true_eq] at h ⊢
+  refine ⟨rfl, ?_⟩
+  simp only [cost_cons]
+  exact Int.add_le_add_left h.2 _
+
+/-- The converse direction of the thin-map law *relies on context*: it holds for
+    paths `p₁` and `p₂` that are both linked to `e` (and are both empty, or both
+    non-empty, which in the fold is automatic since all candidates have the same
+    length). -/
+theorem cons_mono' (e : Edge) (p₁ p₂ : Path)
+    (h₁ : linked e p₁ = true) (h₂ : linked e p₂ = true) (hne : p₁ = [] ↔ p₂ = [])
+    (h : le₂ (e :: p₁) (e :: p₂) = true) : le₂ p₁ p₂ = true := by
+  simp only [le₂, decide_eq_true_eq, cost_cons] at h ⊢
+  refine ⟨?_, le_of_add_le_add_left h.2⟩
+  cases p₁ with
+  | nil =>
+      have : p₂ = [] := hne.mp rfl
+      subst this; rfl
+  | cons f fs =>
+      cases p₂ with
+      | nil => exact absurd (hne.mpr rfl) (by simp)
+      | cons g gs =>
+          simp only [linked, beq_iff_eq] at h₁ h₂
+          simp [h₁ ▸ h₂]
+
+
+/-! ### The algorithm
+
+`tstep es ps ← ThinBy (⪯) (step es ps)`, so that
+
+  `foldr tstep [[]] ← ThinBy (⪯) · foldr step [[]]`
+
+The claim justifying the fusion is `ThinBy (⪯) (cons e ps) = cons e (ThinBy (⪯) ps)`,
+proved with the thin-map and thin-filter laws whose provisos are the three
+lemmas above. -/
+
+def tstep (es : List Edge) (ps : List Path) : List Path :=
+  thinBy le₂ (step es ps)
+
+def mcp (net : Net) : Path := minWith cost (net.foldr tstep [[]])
+
+-- The first step produces exactly one singleton path per source vertex,
+-- just as in the book.
+/--
+info: [[(9, 13, 4)], [(10, 14, 2)], [(11, 16, 3)], [(12, 16, 7)]]
+-/
+#guard_msgs in
+#eval tstep layer₃ [[]]
+
+-- Each additional step also produces exactly four paths, because each layer
+-- has four vertices.
+/--
+info: 4
+-/
+#guard_msgs in
+#eval (net₁.foldr tstep [[]]).length
+
+#guard mcp net₁ = [(4,7,2), (7,11,2), (11,16,3)]
+#guard cost (mcp net₁) = 7
+#guard mcp net₁ = mcp₀ net₁
+
+/-
+  Running time. The number of paths maintained at each step is at most the
+  number of vertices in the current layer, so each step costs at most the
+  product of the number of edges between two layers and the number of vertices
+  in the lower layer. With at most `k` vertices per layer the running time is
+  `O(e*k)`, where `e` is the total number of edges; with `d` layers,
+  `e ≤ (d-1)*k^2`, so thinning takes `O(d*k^3)` steps against Dijkstra's
+  `O(d^2*k^2)`: thinning wins when the network is deeper than it is wide.
+  Exercise 10.14 shaves a factor of `k` off, giving an optimal `O(d*k^2)`.
+
+  Exercise: as a further optimisation, tuple paths with their costs to avoid
+  recomputation of `cost`.
+-/
+
+end LayeredNetwork
+
+-- ## Section 10.3 Coin-changing revisited
+
+namespace CoinChanging
+
+/-! The greedy algorithm of Chapter 7 is not guaranteed to produce the smallest
+number of coins for all denominations; in particular it fails for the United
+Regions. Thinning gives an algorithm that works for *any* set of denominations.
+
+Denominations are taken in increasing order, so that `foldr` considers them in
+decreasing order of value. -/
+
+abbrev Denom := Nat
+abbrev Coin := Nat
+abbrev Residue := Nat
+abbrev Count := Nat
+
+/-- A tuple consists of a list of coin counts `[cₖ,...,c₁]` for the
+    denominations considered so far, the residual amount, and the number of
+    coins used. -/
+abbrev Tuple := List Coin × Residue × Count
+
+def coins   (t : Tuple) : List Coin := t.1
+def residue (t : Tuple) : Residue   := t.2.1
+def count   (t : Tuple) : Count     := t.2.2
+
+instance : Max Tuple := ⟨fun x y => if count x ≤ count y then y else x⟩
+instance : Min Tuple := ⟨fun x y => if count x ≤ count y then x else y⟩
+
+def ukds : List Denom := [1,2,5,10,20,50,100,200]
+def urds : List Denom := [1,2,5,15,20,50,100]
+
+/-- At each step the next lower denomination is considered, and every possible
+    choice for a number of coins of this denomination is considered. -/
+def extend (d : Denom) (t : Tuple) : List Tuple :=
+  (List.range (residue t / d + 1)).map
+    (fun c => (coins t ++ [c], residue t - c * d, count t + c))
+
+def mktuples (n : Nat) (ds : List Denom) : List Tuple :=
+  ds.foldr (fun d ts => ts.flatMap (extend d)) [([], n, 0)]
+
+-- Unlike Chapter 7, `mktuples` returns all the *partial* tuples, including
+-- those with a non-zero residue: `(mktuples 256 ukds).length = 10640485`.
+
+/--
+info: 293
+-/
+#guard_msgs in
+#eval (mktuples 20 ukds).length
+
+/-- `cost t = (residue t, count t)`, ordered lexicographically: a candidate with
+    minimum cost is one whose residue is as small as possible and, among such
+    candidates, one with minimum count. Since there is a denomination of value
+    1, a minimum-cost candidate has zero residue and minimum count. -/
+def cost (t : Tuple) : Residue ×ₗ Count := toLex (residue t, count t)
+
+/-- `mkchange n ← coins · MinWith cost · mktuples n` -/
+def mkchange₀ (n : Nat) (ds : List Denom) : List Coin :=
+  coins (minWith cost (mktuples n ds))
+
+/-! ### Introducing thinning
+
+`mkchange n ← coins · MinWith cost · ThinBy (⪯) · mktuples n`, where `⪯` must
+satisfy `t₁ ⪯ t₂ ⇒ cost t₁ ≤ cost t₂`. There is no point in keeping a tuple in
+play if there is another tuple whose residue is the same but whose count is
+smaller.
+
+It might be thought that the stronger `residue t₁ ≤ residue t₂ ∧ count t₁ ≤
+count t₂` would do, but that statement is false; see Exercise 10.16. -/
+
+def le₃ (t₁ t₂ : Tuple) : Bool :=
+  decide (residue t₁ = residue t₂ ∧ count t₁ ≤ count t₂)
+
+theorem le₃_refl (t : Tuple) : le₃ t t = true := by simp [le₃]
+
+theorem le₃_trans (t₁ t₂ t₃ : Tuple) :
+    le₃ t₁ t₂ = true → le₃ t₂ t₃ = true → le₃ t₁ t₃ = true := by
+  simp only [le₃, decide_eq_true_eq]
+  rintro ⟨h₁, h₂⟩ ⟨h₃, h₄⟩
+  exact ⟨h₁.trans h₃, h₂.trans h₄⟩
+
+/-- The proviso of thin introduction: `t₁ ⪯ t₂ ⇒ cost t₁ ≤ cost t₂`. -/
+theorem le₃_cost (t₁ t₂ : Tuple) (h : le₃ t₁ t₂ = true) : cost t₁ ≤ cost t₂ := by
+  simp only [le₃, decide_eq_true_eq] at h
+  obtain ⟨hr, hk⟩ := h
+  simp only [cost, Prod.Lex.toLex_le_toLex, hr]
+  right
+  simpa
+
+/-! ### Why the usual calculation breaks down
+
+The distributive law rewrites `ThinBy (⪯) (step d ts)` into
+`ThinBy (⪯) (concatMap (ThinBy (⪯) · extend d) ts)`, but the calculation can
+proceed no further, because `ThinBy (⪯) · extend d = extend d`: the tuples in
+`extend d t` have *different* residues, so thinning can never eliminate any of
+them. -/
+
+theorem thin_extend_useless (d : Denom) (t : Tuple) :
+    thinBy le₃ (extend d t) = extend d t := by
+  sorry -- Exercise: no two tuples in `extend d t` are comparable under `le₃`.
+
+/-! Instead we back up and prove the *key fact* (10.2) directly: if `t₁ ⪯ t₂`,
+then every extension of `t₂` is dominated by some extension of `t₁`. This is
+exactly the hypothesis needed by the general fusion theorem of Section 10.5. -/
+
+/-- **Key fact (10.2)**: `t₁ ⪯ t₂ ⇒ ∀ e₂ ∈ extend d t₂, ∃ e₁ ∈ extend d t₁, e₁ ⪯ e₂`. -/
+theorem key_fact (d : Denom) (t₁ t₂ : Tuple) (h : le₃ t₁ t₂ = true) :
+    ∀ e₂ ∈ extend d t₂, ∃ e₁ ∈ extend d t₁, le₃ e₁ e₂ = true := by
+  simp only [le₃, decide_eq_true_eq] at h
+  obtain ⟨hr, hk⟩ := h
+  intro e₂ he₂
+  simp only [extend, List.mem_map, List.mem_range] at he₂
+  obtain ⟨c, hc, rfl⟩ := he₂
+  refine ⟨(coins t₁ ++ [c], residue t₁ - c * d, count t₁ + c), ?_, ?_⟩
+  · simp only [extend, List.mem_map, List.mem_range]
+    exact ⟨c, by rw [hr]; exact hc, rfl⟩
+  · simp only [le₃, decide_eq_true_eq, residue, count]
+    constructor
+    · simp [residue] at hr
+      rw [hr]
+    · exact Nat.add_le_add_right hk c
+
+
+/-! ### The algorithm
+
+`tstep d ← ThinBy (⪯) · concatMap (extend d)`.  The thinning step is more
+effective if tuples with the same residue are brought together, which is
+achieved by keeping tuples in decreasing order of residue; since `extend`
+already produces tuples in that order, it suffices to merge. -/
+
+def cmp₃ (t₁ t₂ : Tuple) : Bool := decide (residue t₂ ≤ residue t₁)
+
+/-- Merging two lists that are ordered according to `cmp`. -/
+def merge2By {α : Type*} (cmp : α → α → Bool) : List α → List α → List α
+  | [], ys => ys
+  | xs, [] => xs
+  | x :: xs, y :: ys =>
+      if cmp x y then x :: merge2By cmp xs (y :: ys)
+      else y :: merge2By cmp (x :: xs) ys
+  termination_by xs ys => xs.length + ys.length
+
+/-- `mergeBy :: (a → a → Bool) → [[a]] → [a]`, left as an exercise in the book.
+    Merging sublists at each step is what lets us *maintain* the order of the
+    candidates, which is what makes `thinBy` effective. -/
+def mergeBy {α : Type*} (cmp : α → α → Bool) : List (List α) → List α :=
+  List.foldr (merge2By cmp) []
+
+def tstep (d : Denom) (ts : List Tuple) : List Tuple :=
+  thinBy le₃ (mergeBy cmp₃ (ts.map (extend d)))
+
+def mkchange (n : Nat) (ds : List Denom) : List Coin :=
+  coins (minWith cost (ds.foldr tstep [([], n, 0)]))
+
+-- `256 = 200 + 50 + 5 + 1`, four coins.
+/--
+info: [1, 0, 1, 0, 0, 1, 0, 1]
+-/
+#guard_msgs in
+#eval mkchange 256 ukds
+
+-- The greedy algorithm gives `20 + 5 + 5`; thinning finds `15 + 15`.
+#guard mkchange 30 urds = [0,0,0,2,0,0,0]
+
+#guard mkchange 20 ukds = [0,0,0,1,0,0,0,0]
+
+/-
+  Running time: `O(n^2 * k)` steps, where `n` is the amount for which change is
+  required and `k` is the number of denominations. At each step at most `n+1`
+  candidates are in play, since there is at most one candidate for each residual
+  amount `0 ≤ r ≤ n`; a candidate with residue `r` has `O(r)` extensions, so
+  there are `O(n^2)` new candidates before thinning.
+
+  Coin-changing is an instance of the layered-network problem (Figure 10.2):
+  each layer contains one vertex per residual amount, and the edges correspond
+  to the choices for the number of coins of the next denomination. This is no
+  accident: all thinning algorithms involving a fold can be regarded as a
+  shortest-path problem on a directed acyclic graph.
+-/
+
+end CoinChanging
+
 end Chapter10
