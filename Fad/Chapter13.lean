@@ -20,15 +20,12 @@ def fib₀T : Nat → TimeM Int
     let y ← fib₀T n
     ✓ (x + y)
 
--- The complexity is
+-- #eval fib₀ 10
+-- #eval fib₀T 10
+-- The complexity is exponential
 -- #eval [5, 10, 15, 20].map fun n => (n, (fib₀T n).time)
 
--- #eval fib₀ 10
-
-def tab (f : Nat → Int) (lo hi : Nat) : Array Int :=
-  (List.range (hi - lo + 1)).map (fun i => f (lo + i)) |>.toArray
-
--- Haskell is a lazy  so we will append another tab function using thunk to get the O(n) complexity
+-- Haskell is a lazy language so we will append another tab function using thunk to get the O(n) complexity
 private def badDependency [Inhabited α] : Thunk α :=
   Thunk.mk fun _ => panic! "undefined lazy-array entry"
 
@@ -75,15 +72,29 @@ private def forceAt [Inhabited α]
   | none      => panic! "index outside lazy-array bounds"
 
 
+-- Lazy tabulation, corresponding to `a = tabulate f (0,n)` in the book.
+private def fibF (a : Nat → Thunk Int) (i : Nat) : Thunk Int :=
+  if i ≤ 1 then
+    Thunk.mk fun _ => Int.ofNat i
+  else
+    let previous := a (i - 1)
+    let beforePrevious := a (i - 2)
+    Thunk.mk fun _ => previous.get + beforePrevious.get
+
 def fib₁ (n : Nat) : Int :=
-  let rec a : Nat → Int :=
-    fun i => if i ≤ 1 then i else a (i - 1) + a (i - 2)
-  let arr := tab a 0 n
-  arr[n]!
+  let bounds := (0, n)
+  let a := tabulate fibF bounds
+  forceAt a bounds n
 
-
+def fib₁T (n : Nat) : TimeM Int := do
+  let bounds := (0, n)
+  let a ← tabulateT fibF bounds
+  TimeM.pure (forceAt a bounds n)
 
 --#eval fib₁ 10
+--#eval fib₁T 10
+-- The complexity is O(n)
+--#eval [10, 20, 40, 80].map fun n => (n, (fib₁T n).time)
 
 def fib₂ (n : Nat) : Int :=
   let step := fun (a b : Int) => (b, a + b)
@@ -93,15 +104,51 @@ def fib₂ (n : Nat) : Int :=
   let (a, _) := apply n (0, 1)
   a
 
+def fib₂T (n : Nat) : TimeM Int :=
+  let step := fun (a b : Int) => (b, a + b)
+  let rec applyT : Nat → Int × Int → TimeM (Int × Int)
+    | 0, p          => TimeM.pure p
+    | k + 1, (a, b) => do
+        let next ← (✓ (step a b))
+        applyT k next
+  do
+    let (a, _) ← applyT n (0, 1)
+    TimeM.pure a
+
 --#eval fib₂ 10
+--#eval fib₂T 10
+-- The complexity is O(n)
+--#eval [10, 20, 40, 80].map fun n => (n, (fib₂T n).time)
 
 def fact (n : Nat) : Int :=
   ((List.range (n + 1)).drop 1).map Int.ofNat |>.foldl (· * ·) 1
 
+private def productT : List Int → TimeM Int
+| []      => TimeM.pure 1
+| x :: xs => do
+    let p ← productT xs
+    ✓ (x * p)
+
+def factT (n : Nat) : TimeM Int :=
+  productT (((List.range (n + 1)).drop 1).map Int.ofNat)
+
+
 def bin₀ (n r : Nat) : Int :=
   fact n / (fact r * fact (n - r))
 
+def bin₀T (n r : Nat) : TimeM Int :=
+  if r > n then
+    TimeM.pure 0
+  else do
+    let fn ← factT n
+    let fr ← factT r
+    let fnr ← factT (n - r)
+    let denominator ← (✓ (fr * fnr))
+    ✓ (fn / denominator)
+
 --#eval bin₀ 6 3
+--#eval bin₀T 6 3
+--#eval [10, 20, 40, 80].map fun n =>((n, n / 2), (bin₀T n (n / 2)).time)
 
 def bin₁ : Nat → Nat → Int
 | _, 0               => 1
@@ -110,7 +157,20 @@ def bin₁ : Nat → Nat → Int
   if r + 1 = n + 1 then 1
   else bin₁ n (r + 1) + bin₁ n r
 
+def bin₁T : Nat → Nat → TimeM Int
+| _, 0         => TimeM.pure 1
+| 0, _         => TimeM.pure 0
+| n + 1, r + 1 =>
+  if r + 1 = n + 1 then
+    TimeM.pure 1
+  else do
+    let x ← bin₁T n (r + 1)
+    let y ← bin₁T n r
+    ✓ (x + y)
+
 --#eval bin₁ 6 3
+--#eval bin₁T 6 3
+
 
 def bin₂ (n r : Nat) : Int := Id.run do
   let mut a : Array ((Nat × Nat) × Int) := #[]
