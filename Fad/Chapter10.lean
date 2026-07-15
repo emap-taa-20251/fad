@@ -667,20 +667,6 @@ info: 4
 #guard cost (mcp net₁) = 7
 #guard mcp net₁ = mcp₀ net₁
 
-/-
-  Running time. The number of paths maintained at each step is at most the
-  number of vertices in the current layer, so each step costs at most the
-  product of the number of edges between two layers and the number of vertices
-  in the lower layer. With at most `k` vertices per layer the running time is
-  `O(e*k)`, where `e` is the total number of edges; with `d` layers,
-  `e ≤ (d-1)*k^2`, so thinning takes `O(d*k^3)` steps against Dijkstra's
-  `O(d^2*k^2)`: thinning wins when the network is deeper than it is wide.
-  Exercise 10.14 shaves a factor of `k` off, giving an optimal `O(d*k^2)`.
-
-  Exercise: as a further optimisation, tuple paths with their costs to avoid
-  recomputation of `cost`.
--/
-
 end LayeredNetwork
 
 -- ## Section 10.3 Coin-changing revisited
@@ -694,7 +680,7 @@ def merge2By {α : Type*} (cmp : α → α → Bool) : List α → List α → L
       else y :: merge2By cmp (x :: xs) ys
   termination_by xs ys => xs.length + ys.length
 
-/-- `mergeBy :: (a → a → Bool) → [[a]] → [a]`, left as an exercise in the book.
+/-- `mergeBy :: (a → a → Bool) → [[a]] → [a]`
     Merging sublists at each step is what lets us *maintain* the order of the
     candidates, which is what makes `thinBy` effective. -/
 def mergeBy {α : Type*} (cmp : α → α → Bool) : List (List α) → List α :=
@@ -794,9 +780,10 @@ proceed no further, because `ThinBy (⪯) · extend d = extend d`: the tuples in
 `extend d t` have *different* residues, so thinning can never eliminate any of
 them. -/
 
+-- Exercise: no two tuples in `extend d t` are comparable under `le₃`.
 theorem thin_extend_useless (d : Denom) (t : Tuple) :
     thinBy le₃ (extend d t) = extend d t := by
-  sorry -- Exercise: no two tuples in `extend d t` are comparable under `le₃`.
+  sorry
 
 /-! Instead we back up and prove the *key fact* (10.2) directly: if `t₁ ⪯ t₂`,
 then every extension of `t₂` is dominated by some extension of `t₁`. This is
@@ -846,20 +833,6 @@ info: [1, 0, 1, 0, 0, 1, 0, 1]
 #guard mkchange 30 urds = [0,0,0,2,0,0,0]
 
 #guard mkchange 20 ukds = [0,0,0,1,0,0,0,0]
-
-/-
-  Running time: `O(n^2 * k)` steps, where `n` is the amount for which change is
-  required and `k` is the number of denominations. At each step at most `n+1`
-  candidates are in play, since there is at most one candidate for each residual
-  amount `0 ≤ r ≤ n`; a candidate with residue `r` has `O(r)` extensions, so
-  there are `O(n^2)` new candidates before thinning.
-
-  Coin-changing is an instance of the layered-network problem (Figure 10.2):
-  each layer contains one vertex per residual amount, and the edges correspond
-  to the choices for the number of coins of the next denomination. This is no
-  accident: all thinning algorithms involving a fold can be regarded as a
-  shortest-path problem on a directed acyclic graph.
--/
 
 end CoinChanging
 
@@ -1002,20 +975,6 @@ def swag (w : Weight) (its : List Item) : Selection :=
 #guard swag 50 items₁ = (["Laptop", "Jewellery", "CD collection"], 99, 46)
 
 #guard swag 50 items₁ = swag₀ 50 items₁
-
-/-
-  Running time. If all weights are integers, each thinning step brings
-  selections of equal weight together and eliminates all but one of them,
-  maintaining a list of at most `w+1` selections; the list is computed in `Θ(w)`
-  steps, so with `n` items the running time is `O(n*w)`. That only *appears* to
-  be linear: if weights are arbitrary positive reals there is no guarantee that
-  only `w+1` selections are maintained — all `2^n` selections might have to be
-  kept, each with a different total weight and value.
-
-  Exercise 10.21: the other reasonable way to define `selections`.
-  Exercises: the integer knapsack problem, and the fractional knapsack problem
-  (for which a greedy algorithm *does* work).
--/
 
 end Knapsack
 
