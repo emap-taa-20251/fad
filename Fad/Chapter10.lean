@@ -1019,4 +1019,129 @@ def swag (w : Weight) (its : List Item) : Selection :=
 
 end Knapsack
 
+-- ## Section 10.5 A general thinning algorithm
+
+/-! The last two examples are very similar, so we end by solving an abstract
+problem that captures all of the essential ideas behind thinning when
+`candidates` is expressed as
+
+  `candidates = foldr (concatMap · extend) [anon]`
+
+and the specification has the form
+
+  `best ← MinWith cost · filter good · candidates`
+
+There are four ritual steps in calculating a thinning algorithm. We use the
+section variable `a` for the type of candidates. -/
+
+section General
+
+variable {D : Type}
+
+def candidates (ext : D → a → List a) (anon : a) (ds : List D) : List a :=
+  ds.foldr (fun d xs => xs.flatMap (ext d)) [anon]
+
+/-- `goodext d x = filter good (extend d x)`. -/
+def goodext (good : a → Bool) (ext : D → a → List a) (d : D) (x : a) : List a :=
+  (ext d x).filter good
+
+def gstep (ge : D → a → List a) (d : D) (xs : List a) : List a :=
+  xs.flatMap (ge d)
+
+/-- Filtering before a `flatMap` changes nothing when every filtered-out element
+    already maps to the empty list. -/
+theorem flatMap_filter {α β : Type*} (good : α → Bool) (f : α → List β)
+    (hbad : ∀ x, good x = false → f x = []) (l : List α) :
+    l.flatMap f = (l.filter good).flatMap f := by
+  induction l with
+  | nil => rfl
+  | cons x xs ih =>
+      by_cases hx : good x = true
+      · simp [List.flatMap_cons, hx, ih]
+      · simp only [Bool.not_eq_true] at hx
+        simp [List.flatMap_cons, hx, hbad x hx, ih]
+
+/-- **Step 1.** Fuse `filter good` with `candidates`.  This is possible if a bad
+    candidate has no good extension; and `anon` has to be good, otherwise there
+    are no good candidates at all. -/
+theorem filter_good_candidates (good : a → Bool) (ext : D → a → List a) (anon : a)
+    (hgood : ∀ (d : D) (x y : a), y ∈ ext d x → good y = true → good x = true)
+    (hanon : good anon = true) :
+    ∀ ds : List D, (candidates ext anon ds).filter good
+      = ds.foldr (gstep (goodext good ext)) [anon] := by
+  intro ds
+  induction ds with
+  | nil => simp [candidates, hanon]
+  | cons d ds ih =>
+      have hbad : ∀ x : a, good x = false → (goodext good ext d) x = [] := by
+        intro x hx
+        simp only [goodext, List.filter_eq_nil_iff]
+        intro y hy hgy
+        rw [hgood d x y hy hgy] at hx
+        exact Bool.noConfusion hx
+      show ((candidates ext anon ds).flatMap (ext d)).filter good = _
+      rw [filter_flatMap]
+      show (candidates ext anon ds).flatMap (goodext good ext d) = _
+      rw [flatMap_filter good (goodext good ext d) hbad, ih]
+      rfl
+
+/-- **Step 2** is thin introduction: with `x ⪯ y ⇒ cost x ≤ cost y` for all good
+    candidates, `thin_introduction` refines the specification to
+
+      `best ← MinWith cost · ThinBy (⪯) · foldr step [anon]`
+
+    **Step 3** is to fuse `ThinBy (⪯)` with the `foldr`.  With
+    `tstep d ← ThinBy (⪯) · step d`, this needs the fusion condition
+
+      `ThinBy (⪯) · step d · ThinBy (⪯) ← ThinBy (⪯) · step d`
+
+    which is (10.1) of Section 10.3.  It follows from the assumption below,
+    which is the abstract form of the key fact (10.2). -/
+def KeyFact (r : a → a → Prop) (ge : D → a → List a) : Prop :=
+  ∀ (d : D) (x y : a), r x y → ∀ v ∈ ge d y, ∃ u ∈ ge d x, r u v
+
+/-- **(10.1)**.  If `us` is a thinning of `ts` and `vs` is a thinning of
+    `step d us`, then `vs` is a thinning of `step d ts`.  Thinning before a step
+    loses nothing. -/
+theorem thin_step_fusion (r : a → a → Prop)
+    (htrans : ∀ x y z, r x y → r y z → r x z)
+    (ge : D → a → List a) (hkey : KeyFact r ge)
+    (d : D) (ts us vs : List a)
+    (hus : ThinBy r ts us)
+    (hvs : ThinBy r (gstep ge d us) vs) :
+    ThinBy r (gstep ge d ts) vs := by
+  obtain ⟨hsub, hdom⟩ := hus
+  obtain ⟨hsub', hdom'⟩ := hvs
+  constructor
+  · -- `vs <+ step d us <+ step d ts`, since `xs <+ ys ⇒ step d xs <+ step d ys`
+    exact hsub'.trans (hsub.flatMap (ge d))
+  · -- `∀ w ∈ step d ts, ∃ v ∈ vs, v ⪯ w`
+    intro w hw
+    simp only [gstep, List.mem_flatMap] at hw
+    obtain ⟨t, ht, hwt⟩ := hw
+    obtain ⟨u, hu, hru⟩ := hdom t ht
+    obtain ⟨e, he, hre⟩ := hkey d u t hru w hwt
+    have hemem : e ∈ gstep ge d us := List.mem_flatMap.2 ⟨u, hu, he⟩
+    obtain ⟨v, hv, hrv⟩ := hdom' e hemem
+    exact ⟨v, hv, htrans v e w hrv hre⟩
+
+/-- **Step 4.** Make thinning more effective by keeping the candidates in order,
+    merging sublists at each step rather than sorting.  This is the general
+    algorithm:
+
+      `best = minWith cost · foldr step [anon]`
+      `  where step d = thinBy (⪯) · mergeBy cmp · map (filter good · extend d)`
+      `        cmp x y = value x ≤ value y`
+
+    It is possible, with more or less effort, to reformulate the three problems
+    of this chapter as instances of this scheme; what matters is that the
+    derivation of a thinning algorithm follows a more or less standard path. -/
+def best {β : Type} [LE β] [DecidableRel (α := β) (· ≤ ·)]
+    (cost : a → β) (le cmp : a → a → Bool) (good : a → Bool)
+    (ext : D → a → List a) (anon : a) (ds : List D) : a :=
+  minWith cost
+    (ds.foldr (fun d xs => thinBy le (mergeBy cmp (xs.map (goodext good ext d)))) [anon])
+
+end General
+
 end Chapter10
