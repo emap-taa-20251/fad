@@ -267,58 +267,111 @@ termination_by as.length + bs.length
 -- #check _root_.Tree
 abbrev BTree := Chapter4.BST2.Tree
 
-def selectT₀ (k : Nat) (t₁ t₂ : BTree a) (ok : k < t₁.flatten.length + t₂.flatten.length): a :=
-  (merge (t₁.flatten) (t₂.flatten))[k]'(by grind [merge_length_eq_add_lenght])
+/-
+In this part, we will use .height as the size of the tree.
+-/
+def ValidSizeTree {a : Type} : BTree a → Prop
+  | .null => True
+  | .node s l _ r =>
+      s = l.flatten.length + 1 + r.flatten.length ∧
+      ValidSizeTree l ∧
+      ValidSizeTree r
 
-def index₀ (t : BTree a) (k : Nat) (ok : k < t.flatten.length): a :=
-  (t.flatten)[k]
+theorem size_eq_flatten_length {a : Type} (t : BTree a) (hValid : ValidSizeTree t) :
+  t.height = t.flatten.length := by
+  cases t with
+  | null => rfl
+  | node s l x r =>
+    rcases hValid with ⟨hSize, hValid⟩
+    simp [Chapter4.BST2.Tree.height, Tree.flatten]
+    omega
 
-def index (t : BTree a) (k : Nat) (ok : k < t.flatten.length): a :=
-  match t with
-  | .null => default
-  | .node _ l x r =>
-    let p := l.flatten.length
-    if      h₁: k < p then index l k (by grind)
+def selectT₀ (k : Nat) (t₁ t₂ : BTree a)
+  (ok : k < t₁.height + t₂.height) (hValid : ValidSizeTree t₁ ∧ ValidSizeTree t₂): a :=
+  (merge (t₁.flatten) (t₂.flatten))[k]'(by
+    repeat rw [size_eq_flatten_length] at ok
+    rw [merge_length_eq_add_lenght]
+    omega
+    apply hValid.2
+    apply hValid.1
+  )
+
+def index₀ (t : BTree a) (k : Nat)
+  (ok : k < t.height) (hValid : ValidSizeTree t): a :=
+  (t.flatten)[k]'(by
+    rw [size_eq_flatten_length] at ok
+    omega
+    exact hValid
+  )
+
+def index (t : BTree a) (k : Nat) (ok : k < t.height) (hValid : ValidSizeTree t) : a :=
+  match t, hValid with
+  | .null, _ => default
+  | .node h l x r, ⟨hSize, hValidL, hValidR⟩ =>
+    let p := l.height
+    if      h₁: k < p then index l k (by omega) hValidL
     else if h₂: k = p then x
-    else                   index r (k - p - 1) (by grind [Tree.flatten])
+    else                   index r (k - p - 1) (by
+      simp [Chapter4.BST2.Tree.height] at ok
+      simp_all [size_eq_flatten_length, p]
+      omega
+    ) hValidR
 
 theorem index_eq_index₀ {a : Type} [LE a] [DecidableRel (α := a) (· ≤ ·)] [Inhabited a]
-(t : BTree a) (k : Nat) (ok : k < t.flatten.length) :
-  index t k ok = index₀ t k ok := by
+(t : BTree a) (k : Nat) (ok : k < t.height) (hValid : ValidSizeTree t) :
+  index t k ok hValid = index₀ t k ok hValid := by
     induction t generalizing k with
-    | null => grind [index, Tree.flatten]
-    | node h l x r lih rih =>
-      simp_all [index, index₀, Tree.flatten]
-      split_ifs with h1 h2 <;> grind
+    | null => contradiction
+    | node s l x r lih rih =>
+      obtain ⟨hSize, hValidL, hValidR⟩ := hValid
+      simp only [index, index₀, Tree.flatten]
+      split_ifs with h1 h2
+      . simp [lih, index₀]
+        rw [size_eq_flatten_length] at h1
+        simp [h1]
+        apply hValidL
+      . rw [size_eq_flatten_length] at h2
+        simp [h2]
+        apply hValidL
+      . simp only [rih, index₀]
+        rw [size_eq_flatten_length] at h1
+        rw [size_eq_flatten_length] at h2
+        simp_all [size_eq_flatten_length]
+        grind
+        repeat apply hValidL
 
 def selectT (k : Nat) (t₁ t₂ : BTree a)
-    (ok : k < t₁.flatten.length + t₂.flatten.length) : a :=
-  match t₁, t₂ with
-  | t₁ ,             .null           => index t₁ k (by simp_all [Tree.flatten])
-  | .null ,         t₂               => index t₂ k (by simp_all [Tree.flatten])
-  | .node h₁ l₁ x r₁, .node h₂ l₂ y r₂ =>
-    let p := l₁.flatten.length
-    let q := l₂.flatten.length
+    (ok : k < t₁.height + t₂.height) (hValid : ValidSizeTree t₁ ∧ ValidSizeTree t₂) : a :=
+  match t₁, t₂, hValid with
+  | t₁, .null, ⟨hValid1, hValid2⟩ =>
+      index t₁ k (by simp_all [Chapter4.BST2.Tree.height]) hValid1
+  | .null, t₂, ⟨hValid1, hValid2⟩ =>
+      index t₂ k (by simp_all [Chapter4.BST2.Tree.height]) hValid2
+  | .node h₁ l₁ x r₁, .node h₂ l₂ y r₂, ⟨hValid1, hValid2⟩ =>
+    let ⟨hSize1, hValidL1, hValidR1⟩ := hValid1
+    let ⟨hSize2, hValidL2, hValidR2⟩ := hValid2
+    let p := l₁.height
+    let q := l₂.height
+    have hpl1 : l₁.height = l₁.flatten.length := size_eq_flatten_length l₁ hValidL1
+    have hpr1 : r₁.height = r₁.flatten.length := size_eq_flatten_length r₁ hValidR1
+    have hpl2 : l₂.height = l₂.flatten.length := size_eq_flatten_length l₂ hValidL2
+    have hpr2 : r₂.height = r₂.flatten.length := size_eq_flatten_length r₂ hValidR2
     if ih₁ : x ≤ y ∧ k ≤ p + q then
-      selectT k (.node h₁ l₁ x r₁) l₂ (by
-        simp_all [Tree.flatten]
-        omega
-      )
+      selectT k (.node h₁ l₁ x r₁) l₂
+        (by simp_all [Chapter4.BST2.Tree.height, p, q]; omega)
+        ⟨hValid1, hValidL2⟩
     else if ih₂ : x ≤ y then
-      selectT (k - p - 1) r₁ (.node h₂ l₂ y r₂) (by
-        simp_all [Tree.flatten]
-        omega
-      )
+      selectT (k - p - 1) r₁ (.node h₂ l₂ y r₂)
+        (by simp_all [Chapter4.BST2.Tree.height, p, q]; omega)
+        ⟨hValidR1, hValid2⟩
     else if ih₃ : y ≤ x ∧ k ≤ p + q then
-      selectT k l₁ (.node h₂ l₂ y r₂) (by
-        simp_all [Tree.flatten]
-        omega
-      )
+      selectT k l₁ (.node h₂ l₂ y r₂)
+        (by simp_all [Chapter4.BST2.Tree.height, p, q]; omega)
+        ⟨hValidL1, hValid2⟩
     else
-      selectT (k - q - 1) (.node h₁ l₁ x r₁) r₂ (by
-        simp_all [Tree.flatten]
-        omega
-      )
+      selectT (k - q - 1) (.node h₁ l₁ x r₁) r₂
+        (by simp_all [Chapter4.BST2.Tree.height, p, q]; omega)
+        ⟨hValid1, hValidR2⟩
 
 -- # Section 6.4: Selection from the complement of a set
 
