@@ -71,8 +71,8 @@ Along the way, readers gain experience not only in algorithm design, but also in
 
     - [x] 6.1 Minimum and maximum
     - [x] 6.2 Selection from one set
-    - [ ] 6.3 Selection from two sets
-    - [ ] 6.4 Selection from the complement of a set
+    - [x] 6.3 Selection from two sets
+    - [x] 6.4 Selection from the complement of a set
     - [ ] Exercises
 
 ### Part Three: Greedy Algorithms

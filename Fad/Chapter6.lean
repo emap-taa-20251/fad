@@ -1,3 +1,4 @@
+import Fad.API
 import Fad.Chapter1
 import Fad.Chapter3
 import Fad.Chapter5
@@ -14,7 +15,7 @@ open Chapter4.BST2 (partition3 Tree rotl Tree.height)
 open Chapter5.Mergesort (merge pairWith halve length_halve_fst length_halve_snd)
 open Chapter5.Quicksort (qsort₁)
 open Chapter5 (csort)
-
+open TimeM
 
 -- # Section 6.1: minimum and maximum
 
@@ -73,6 +74,29 @@ theorem minimum_eq_foldrmin {a : Type} [LinearOrder a] [Inhabited a]
     | nil => exact min_comm x y
     | cons z zs ih2 => grind [foldr1]
 
+def foldr1M (f : a → a → TimeM a) : List a → TimeM a
+  | []    => ✓ default, 0
+  | [x]   => ✓ x, 0
+  | x :: y :: ys => do
+    let rest ← foldr1M f (y :: ys)
+    f x rest
+
+def maxM (x y : Nat) : TimeM Nat :=
+  ✓ (max x y)
+
+def maximumM : List Nat → TimeM Nat :=
+  foldr1M maxM
+
+theorem time_maximum (xs : List Nat) :
+  (maximumM xs).time = xs.length - 1 := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+    cases xs with
+    | nil => rfl
+    | cons y ys =>
+      simp_all [maximumM, foldr1M, maxM]
+
 def minmax₀ : List a → (a × a)
   | []      => default
   | x :: xs =>
@@ -87,6 +111,31 @@ def minmax₁ : List a → (a × a)
       else if x > q.2 then (q.1, x)
       else (q.1, q.2)
     xs.foldr op (x,x)
+
+def minmax₁M : List Nat → TimeM (Nat × Nat)
+  | [] => ✓ (0, 0), 0
+  | [x] => ✓ (x, x), 0
+  | x :: y :: ys => do
+      let q ← minmax₁M (y :: ys)
+
+      if x < q.1 then
+        ✓ (x, q.2), 1
+      else do
+        if x > q.2 then
+          ✓ (q.1, x), 1
+        else
+          ✓ (q.1, q.2), 1
+
+theorem time_minmax1M_worst : ∀ (xs : List Nat), (minmax₁M xs).time ≤ 2 * xs.length
+  | [] => by rfl
+  | [x] => by simp [minmax₁M]
+  | x :: y :: ys => by
+      simp [minmax₁M]
+      have ih := time_minmax1M_worst (y :: ys)
+      split_ifs
+      all_goals
+       simp_all
+       omega
 
 def minmax₂ : List a → (a × a)
   | []      => default
@@ -108,6 +157,42 @@ def minmax₂ : List a → (a × a)
      (min q.1 r.1, max q.2 r.2)
 termination_by xs => xs.length
 
+def minmax2M : List Nat → TimeM (Nat × Nat)
+  | [] => ✓ (0, 0), 0
+  | [x] => ✓ (x, x), 0
+  | [x, y] => do
+    let _ ← ✓ (), 1
+    if x ≤ y then
+      ✓ (x, y), 0
+    else
+      ✓ (y, x), 0
+  | x₁ :: x₂ :: xs => do
+      let p := halve (x₁ :: x₂ :: xs)
+      let q ← minmax2M p.1
+      let r ← minmax2M p.2
+      let _ ← ✓ (), 2
+      ✓ (min q.1 r.1, max q.2 r.2), 0
+termination_by xs => xs.length
+decreasing_by
+  . simp [length_halve_fst]
+    omega
+  . simp [length_halve_snd]
+    omega
+
+theorem time_minmax2M (xs : List Nat) (h : xs.length > 2) :
+  (minmax2M xs).time =
+    (minmax2M (halve xs).1).time + (minmax2M (halve xs).2).time + 2 := by
+  match xs with
+  | [] => contradiction
+  | [x] => contradiction
+  | [x, y] => contradiction
+  | x :: y :: ys =>
+    rw [minmax2M]
+    simp_all
+    . rfl
+    . intro h
+      simp_all
+
 
 def mkPairs : List a → List (a × a)
   | []           => []
@@ -118,6 +203,29 @@ def mkPairs : List a → List (a × a)
     else
      (y, x) :: mkPairs xs
 
+def mkPairsM : List Nat → TimeM (List (Nat × Nat))
+  | []           => ✓ [], 0
+  | [x]          => ✓ [(x, x)], 0
+  | x :: y :: xs => do
+      let rest ← mkPairsM xs
+      let _ ← ✓ (), 1
+
+      if x ≤ y then
+        ✓ ((x, y) :: rest), 0
+      else
+        ✓ ((y, x) :: rest), 0
+
+theorem time_mkPairsM (xs : List Nat) : (mkPairsM xs).time = xs.length / 2 := by
+  match xs with
+  | [] => rfl
+  | [x] => simp [mkPairsM]
+  | x :: y :: ys =>
+    simp [mkPairsM]
+    split_ifs
+    all_goals
+      simp
+      have ih := time_mkPairsM ys
+      omega
 
 def minmax (xs : List a) : (a × a) :=
   let op p q := (min p.1 q.1, max p.2 q.2)
@@ -197,6 +305,33 @@ partial def select (k : Nat) (xs : List a) (ok : k ≤ xs.length) : a :=
   if      h₁ : k ≤ m      then select k us (by grind)
   else if h₂ : k ≤ m + n  then vs[k - m - 1]
   else                         select (k - m - n) ws (by grind [partition3_length])
+
+def partition3M (p : Nat) : List Nat → TimeM (List Nat × List Nat × List Nat)
+  | [] => ✓ ([], [], []), 0
+  | x :: xs => do
+      let res ← partition3M p xs
+
+      let _ ← ✓ (), 1
+      if x < p then
+        ✓ (x :: res.1, res.2.1, res.2.2), 0
+      else do
+        let _ ← ✓ (), 1
+        if x = p then
+          ✓ (res.1, x :: res.2.1, res.2.2), 0
+        else
+          ✓ (res.1, res.2.1, x :: res.2.2), 0
+
+theorem time_partition3M_le (p : Nat) (xs : List Nat) :
+  (partition3M p xs).time ≤ 2 * xs.length := by
+  induction xs with
+  | nil =>
+    rfl
+  | cons x xs ih =>
+    simp [partition3M]
+    split_ifs
+    all_goals
+      simp_all
+      omega
 
 /- may not be necessary -/
 def select' (k : Nat) (xs : List a) (q: k ≤ xs.length): a :=
@@ -290,18 +425,18 @@ def selectT₀ (k : Nat) (t₁ t₂ : BTree a)
   (ok : k < t₁.height + t₂.height) (hValid : ValidSizeTree t₁ ∧ ValidSizeTree t₂): a :=
   (merge (t₁.flatten) (t₂.flatten))[k]'(by
     repeat rw [size_eq_flatten_length] at ok
-    rw [merge_length_eq_add_lenght]
-    omega
-    apply hValid.2
-    apply hValid.1
+    . rw [merge_length_eq_add_lenght]
+      omega
+    . exact hValid.2
+    . exact hValid.1
   )
 
 def index₀ (t : BTree a) (k : Nat)
   (ok : k < t.height) (hValid : ValidSizeTree t): a :=
   (t.flatten)[k]'(by
     rw [size_eq_flatten_length] at ok
-    omega
-    exact hValid
+    . omega
+    . exact hValid
   )
 
 def index (t : BTree a) (k : Nat) (ok : k < t.height) (hValid : ValidSizeTree t) : a :=
@@ -328,17 +463,18 @@ theorem index_eq_index₀ {a : Type} [LE a] [DecidableRel (α := a) (· ≤ ·)]
       split_ifs with h1 h2
       . simp [lih, index₀]
         rw [size_eq_flatten_length] at h1
-        simp [h1]
-        apply hValidL
+        . simp [h1]
+        . exact hValidL
       . rw [size_eq_flatten_length] at h2
-        simp [h2]
-        apply hValidL
+        . simp [h2]
+        . exact hValidL
       . simp only [rih, index₀]
         rw [size_eq_flatten_length] at h1
-        rw [size_eq_flatten_length] at h2
-        simp_all [size_eq_flatten_length]
-        grind
-        repeat apply hValidL
+        . rw [size_eq_flatten_length] at h2
+          . simp_all [size_eq_flatten_length]
+            grind
+          . exact hValidL
+        . exact hValidL
 
 def selectT (k : Nat) (t₁ t₂ : BTree a)
     (ok : k < t₁.height + t₂.height) (hValid : ValidSizeTree t₁ ∧ ValidSizeTree t₂) : a :=
