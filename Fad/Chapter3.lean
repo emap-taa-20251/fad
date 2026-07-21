@@ -7,6 +7,12 @@ open List (reverse tail cons)
 
 -- # Section 3.1 Symmetric lists
 
+def _root_.List.single (xs : List α) : Bool := xs.length = 1
+
+def snoc {a : Type} (x : a) (xs : List a) : List a :=
+  xs ++ [x]
+
+
 namespace DoesNotWork
 
 variable {α : Type}
@@ -31,21 +37,18 @@ example (x : α) (xs : SymList α)
  : (snoc x ∘ fromSL) xs = (fromSL ∘ snocSL x) xs
  := by
  have (as, bs) := xs
- unfold Function.comp snoc
+ unfold Function.comp
+ unfold snoc
  induction as generalizing bs with
  | nil =>
-   simp [fromSL, snocSL]; sorry
+   simp [fromSL, snocSL]
+   sorry
  | cons y ys ih =>
    simp [fromSL, snocSL, List.reverse_cons, List.append_assoc]
 -/
 
 end DoesNotWork
 
-
-def _root_.List.single (xs : List α) : Bool := xs.length = 1
-
-def snoc {a : Type} (x : a) (xs : List a) : List a :=
-  xs ++ [x]
 
 
 structure SymList (a : Type) where
