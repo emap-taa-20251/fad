@@ -263,7 +263,7 @@ theorem length_tail_lt_length (sl : SymList a) (h : sl ≠ nil)
       | inr m => simp [m]
   · simp_all
     by_cases l: lsl.length = 1
-    · simp [l, splitInTwoSL, Nat.min_def]
+    · simp [l, Nat.min_def]
       by_cases q: (rsl.length + 1) / 2 ≤ rsl.length
       · simp [q]
       simp [q]
@@ -464,6 +464,8 @@ theorem inits_eq {a : Type} (xs : List a) : inits₁ xs = inits₂ xs := by
 
 -- # Section 3.2 Random-access lists
 
+namespace RAList
+
 def fetch {a : Type} : Nat → List a → Option a
  | _, []      => none
  | k, x :: xs => if k = 0 then x else fetch (k - 1) xs
@@ -500,7 +502,6 @@ def Tree.height : Tree α → Nat
 def Tree.mk (t₁ t₂ : Tree a) : Tree a :=
  node (t₁.size + t₂.size) t₁ t₂
 
-open Tree
 
 inductive Digit (a : Type) : Type where
  | zero : Digit a
@@ -514,10 +515,9 @@ def Digit.toString [ToString α] : Digit α → String
 instance {α : Type} [ToString α] : ToString (Digit α) where
   toString := Digit.toString
 
-open Digit
+end RAList
 
--- works with def too
-abbrev RAList (a : Type) : Type := List (Digit a)
+abbrev RAList (a : Type) : Type := List (RAList.Digit a)
 
 
 def concat1 {a : Type} : List (List a) → List a :=
@@ -526,10 +526,11 @@ def concat1 {a : Type} : List (List a) → List a :=
 def concatMap (f : a → List b) : List a → List b :=
  concat1 ∘ (List.map f)
 
+namespace RAList
 
 def fromT : Tree a → List a
- | (leaf x) => [x]
- | (node _ t₁ t₂) => fromT t₁ ++ fromT t₂
+ | .leaf x => [x]
+ | .node _ t₁ t₂ => fromT t₁ ++ fromT t₂
 
 def fromRA : RAList a → List a :=
   concatMap frm
@@ -541,18 +542,18 @@ def fromRA : RAList a → List a :=
 
 def fetchT [ToString a] (n : Nat) (t : Tree a) : Option a :=
  match n, t with
- | 0, leaf x => x
- | k, (node n t₁ t₂) =>
+ | 0, .leaf x       => x
+ | k, .node n t₁ t₂ =>
    let m := n / 2
    if k < m then fetchT k t₁ else fetchT (k - m) t₂
- | _, leaf _ => none
+ | _, .leaf _ => none
 
 def fetchRA [ToString a] (n : Nat) (ra : RAList a) : Option a :=
  match n, ra with
  | _, [] => none
- | k, (zero :: xs) => fetchRA k xs
- | k, (one t :: xs) =>
-   if k < size t then fetchT k t else fetchRA (k - size t) xs
+ | k, .zero :: xs  => fetchRA k xs
+ | k, .one t :: xs =>
+   if k < t.size then fetchT k t else fetchRA (k - t.size) xs
 
 
 def nilRA {a : Type} : RAList a := []
@@ -564,6 +565,7 @@ def consRA {a : Type} (x : a) (xs : RAList a) : RAList a :=
   | t1, Digit.one t2 :: xs => Digit.zero :: consT (Tree.mk t1 t2) xs
  consT (Tree.leaf x) xs
 
+end RAList
 
 /- # Section 3.3 Arrays -/
 

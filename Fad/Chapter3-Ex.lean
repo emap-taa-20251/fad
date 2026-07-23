@@ -187,6 +187,8 @@ def inits {α : Type} : List α → List (List α) :=
 
 /- # Exercicio 3.8  -/
 
+namespace RAList
+
 def measure (ts : List (Tree a)) : Nat :=
   ts.foldr (λ t acc => size t + acc) 0
  where
@@ -207,12 +209,15 @@ def fromTs : List (Tree a) → List a
   fromTs (t1 :: t2 :: ts)
 termination_by x1 => measure x1
 
+end RAList
 
 /- # Exercício 3.10
 
 The first one I used `calc` and `apply?` helped a lot , despite it looks ugly.
 But the second one (comented) I guess is more elegant and convenient, using
 `show` -/
+
+namespace RAList
 
 def toRA {a : Type} : List a → RAList a :=
   List.foldr consRA nilRA
@@ -269,7 +274,11 @@ example {a : Type} : ∀ (xs : List a), xs = fromRA (toRA xs) := by
     show x :: xs = x :: fromRA (toRA xs)
     rw [← ih]
 
+end RAList
+
 -- # Exercicio 3.11
+
+namespace RAList
 
 def updateT : Nat → α → Tree α → Tree α
 | 0, x, Tree.leaf _ => Tree.leaf x
@@ -290,8 +299,11 @@ def updateRA : Nat → α → RAList α → RAList α
   else
     (Digit.one t) :: (updateRA (k- t.size) x xs)
 
+end RAList
 
--- 3.12
+-- ## Exercise 3.12
+
+namespace RAList
 
 open Function (uncurry) in
 
@@ -301,8 +313,11 @@ def updatesRA : RAList α → List (Nat × α) → RAList α
 -- infix: 60 " // " => updatesRA
 -- #eval fromRA <| (toRA ['a','b','c']) // [(2, 'x'), (0, 'y')]
 
+end RAList
 
--- 3.13
+-- ## Exercise 3.13
+
+namespace RAList
 
 def unconsT : RAList a → Option (Tree a × RAList a)
 | [] => none
@@ -323,6 +338,7 @@ def unconsRA (xs : RAList a) : Option (a × RAList a) :=
  | some (Tree.node _ _ _, _) => none
  | none => none
 
+
 /-
 #eval unconsT <| toRA ([] : List Nat)
 #eval do
@@ -337,6 +353,7 @@ def headRA (xs : RAList a) : Option a :=
 def tailRA (xs : RAList a) : Option (RAList a) :=
   Prod.snd <$> unconsRA xs
 
+end RAList
 
 -- 3.14
 
