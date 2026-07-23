@@ -502,8 +502,6 @@ def Tree.mk (t₁ t₂ : Tree a) : Tree a :=
 
 open Tree
 
--- #eval mk (mk (leaf 'a') (leaf 'b')) (mk (leaf 'c') (leaf 'd'))
-
 inductive Digit (a : Type) : Type where
  | zero : Digit a
  | one (t : Tree a) : Digit a
@@ -521,7 +519,6 @@ open Digit
 -- works with def too
 abbrev RAList (a : Type) : Type := List (Digit a)
 
--- #check ([Digit.zero, Digit.zero] : RAList Nat)
 
 def concat1 {a : Type} : List (List a) → List a :=
  List.foldr List.append []
@@ -541,12 +538,6 @@ def fromRA : RAList a → List a :=
    | Digit.zero => []
    | Digit.one t => fromT t
 
-/-
-#eval fromRA [zero,
-        one (mk (leaf 'a') (leaf 'b')),
-        one (mk (mk (leaf 'c') (leaf 'd'))
-                (mk (leaf 'e') (leaf 'f')))]
--/
 
 def fetchT [ToString a] (n : Nat) (t : Tree a) : Option a :=
  match n, t with
@@ -563,24 +554,15 @@ def fetchRA [ToString a] (n : Nat) (ra : RAList a) : Option a :=
  | k, (one t :: xs) =>
    if k < size t then fetchT k t else fetchRA (k - size t) xs
 
-/-
-#eval fetchRA 10 [zero,
-        one (mk (leaf 'a') (leaf 'b')),
-        one (mk (mk (leaf 'c') (leaf 'd'))
-                (mk (leaf 'e') (leaf 'f')))]
--/
 
 def nilRA {a : Type} : RAList a := []
 
 def consRA {a : Type} (x : a) (xs : RAList a) : RAList a :=
+ let rec consT : Tree a → RAList a → RAList a
+  | t1, [] => [Digit.one t1]
+  | t1, Digit.zero :: xs => Digit.one t1 :: xs
+  | t1, Digit.one t2 :: xs => Digit.zero :: consT (Tree.mk t1 t2) xs
  consT (Tree.leaf x) xs
-where
- consT : Tree a → RAList a → RAList a
- | t1, [] => [Digit.one t1]
- | t1, Digit.zero :: xs => Digit.one t1 :: xs
- | t1, Digit.one t2 :: xs => Digit.zero :: consT (Tree.mk t1 t2) xs
-
--- #eval [3,1,6,8,9,0,5] |>.foldl (λ a r => consRA r a) nilRA
 
 
 /- # Section 3.3 Arrays -/

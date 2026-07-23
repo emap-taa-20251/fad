@@ -208,14 +208,15 @@ def fromTs : List (Tree a) → List a
 termination_by x1 => measure x1
 
 
-/-- # Exercício 3.10 -/
+/- # Exercício 3.10
+
+The first one I used `calc` and `apply?` helped a lot , despite it looks ugly.
+But the second one (comented) I guess is more elegant and convenient, using
+`show` -/
 
 def toRA {a : Type} : List a → RAList a :=
   List.foldr consRA nilRA
 
-/-- Just trying to prove the example below. I created two ways of proof. The
-first one I used `calc` and `apply?` helped a lot , despite it looks ugly. But
-the second one (comented) I guess is more elegant and convenient, using `show` -/
 theorem fromRA_consT {a : Type} (t : Tree a) (ds : RAList a) :
     fromRA (consRA.consT t ds) = fromT t ++ fromRA ds := by
   induction ds generalizing t with
@@ -226,16 +227,29 @@ theorem fromRA_consT {a : Type} (t : Tree a) (ds : RAList a) :
     | one t₂ =>
       calc
       fromRA (Digit.zero :: consRA.consT (Tree.mk t t₂) ds)
-          = fromRA (consRA.consT (Tree.mk t t₂) ds) := by
-              simp [fromRA, concatMap, concat1]
-              exact Eq.symm ((fun {α} {xs} => List.nil_eq.mpr) rfl)
+        = fromRA (consRA.consT (Tree.mk t t₂) ds) := by
+          simp [fromRA, concatMap, concat1]
+          exact Eq.symm ((fun {α} {xs} => List.nil_eq.mpr) rfl)
       _ = fromT (Tree.mk t t₂) ++ fromRA ds := by
-              exact ih (Tree.mk t t₂)
+          exact ih (Tree.mk t t₂)
       _ = fromT t ++ fromRA (Digit.one t₂ :: ds) := by
-              simp [fromRA, concatMap, concat1, fromT, Tree.mk, List.append_assoc]
-              exact List.toList_toArray
+          simp [fromRA, concatMap, concat1, fromT, Tree.mk, List.append_assoc]
+          exact List.toList_toArray
 
-example : ∀ (xs : List a), xs = fromRA (toRA xs) := by
+theorem fromRA_consT' {a : Type} (t : Tree a) (ds : RAList a) :
+    fromRA (consRA.consT t ds) = fromT t ++ fromRA ds := by
+  induction ds generalizing t with
+  | nil => rfl
+  | cons d ds ih =>
+    cases d with
+    | zero => rfl
+    | one t₂ =>
+      show fromRA (consRA.consT (Tree.mk t t₂) ds) = fromT t ++ (fromT t₂ ++ fromRA ds)
+      rw [ih]
+      show fromT t ++ fromT t₂ ++ fromRA ds = fromT t ++ (fromT t₂ ++ fromRA ds)
+      rw [List.append_assoc]
+
+example {a : Type} : ∀ (xs : List a), xs = fromRA (toRA xs) := by
   intro xs
   induction xs with
   | nil => rfl
@@ -245,31 +259,17 @@ example : ∀ (xs : List a), xs = fromRA (toRA xs) := by
     simp [fromRA_consT, fromT]
     exact List.append_cancel_left (congrArg (HAppend.hAppend xs) ih)
 
--- theorem fromRA_consT {a : Type} (t : Tree a) (ds : RAList a) :
---     fromRA (consRA.consT t ds) = fromT t ++ fromRA ds := by
---   induction ds generalizing t with
---   | nil => rfl
---   | cons d ds ih =>
---     cases d with
---     | zero => rfl
---     | one t₂ =>
---       show fromRA (consRA.consT (Tree.mk t t₂) ds) = fromT t ++ (fromT t₂ ++ fromRA ds)
---       rw [ih]
---       show fromT t ++ fromT t₂ ++ fromRA ds = fromT t ++ (fromT t₂ ++ fromRA ds)
---       rw [List.append_assoc]
+example {a : Type} : ∀ (xs : List a), xs = fromRA (toRA xs) := by
+  intro xs
+  induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+    show x :: xs = fromRA (consRA.consT (Tree.leaf x) (toRA xs))
+    rw [fromRA_consT]
+    show x :: xs = x :: fromRA (toRA xs)
+    rw [← ih]
 
--- example : ∀ (xs : List a), xs = fromRA (toRA xs) := by
---   intro xs
---   induction xs with
---   | nil => rfl
---   | cons x xs ih =>
---     show x :: xs = fromRA (consRA.consT (Tree.leaf x) (toRA xs))
---     rw [fromRA_consT]
---     show x :: xs = x :: fromRA (toRA xs)
---     rw [← ih]
-
-
--- 3.11
+-- # Exercicio 3.11
 
 def updateT : Nat → α → Tree α → Tree α
 | 0, x, Tree.leaf _ => Tree.leaf x
