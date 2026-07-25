@@ -260,7 +260,7 @@ theorem length_tail_lt_length (sl : SymList a) (h : sl ≠ nil)
       | inr m => simp [m]
   · simp_all
     by_cases l: lsl.length = 1
-    · simp [l, splitInTwoSL, Nat.min_def]
+    · simp [l, Nat.min_def]
       by_cases q: (rsl.length + 1) / 2 ≤ rsl.length
       · simp [q]
       simp [q]
