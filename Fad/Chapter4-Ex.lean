@@ -1,29 +1,50 @@
 import Fad.Chapter4
 import Fad.Chapter3
-
+import Mathlib
 namespace Chapter4
 
-/- # Exercício 4.1 -/
 
-theorem floor_ineq (a b : ℤ) :
-    (a < (a + b) / 2 ∧ (a + b) / 2 < b) ↔ a + 1 < b := by
+/- # Exercício 4.1
+
+The *rule of floors* states that for integers $n$ and real numbers $r$ we have
+$n ≤ ⌊r⌋ ↔ n ≤ r$ (Mathlib `Int.le_floor`). This useful rule will appear in a
+number of problems. Using just the rule of floors (no case analysis) prove that
+for integers $a$ and $b$ we have $a < (a+b)/2 < b$ if and only if $a + 1 < b$.
+
+The dual *rule of ceilings* states that for integers $n$ and real numbers $r$ we
+have $⌈r⌉ ≤ n ↔ r ≤ n$ (Mathlib `Int.ceil_le`). Using this rule prove that if
+$h$ is an integer such that $n < 2^h$, then $⌈log (n + 1)⌉ ≤ h$.
+-/
+
+theorem floor_ineq (a b : ℤ)
+  : (a < (a + b) / 2 ∧ (a + b) / 2 < b) ↔ a + 1 < b := by
+  -- a divisão inteira (a+b)/2 é ⌊(a+b)/2⌋ sobre ℝ
+  have hdiv : (a + b) / 2 = ⌊(a + b : ℝ) / 2⌋ := by
+    rw [show ((a + b : ℝ) / 2) = ((((a + b : ℤ) : ℚ) / ((2 : ℕ) : ℚ) : ℚ) : ℝ) by
+      push_cast; ring]
+    rw [Rat.floor_cast, Rat.floor_intCast_div_natCast]
+    norm_num
+  have floor_lt : ∀ (x : ℤ) (r : ℝ), ⌊r⌋ < x ↔ r < x :=
+    fun x r => by rw [← not_le, ← not_le, Int.le_floor]
+  -- reescreve (a < ·) como (a+1 ≤ ·) e retira os dois pisos pela regra dos pisos
+  rw [hdiv, Int.lt_iff_add_one_le, Int.le_floor, floor_lt]
+  push_cast
   constructor
-  · rintro ⟨h1, h2⟩
-    linarith
-  · intro h
-    rcases Int.emod_two_eq_zero_or_one (a + b) with he | he <;>
-      have hdm := Int.emod_add_mul_ediv (a + b) 2 <;>
-      exact ⟨by linarith, by linarith⟩
+  · rintro ⟨e1, e2⟩
+    exact_mod_cast show (a : ℝ) + 1 < b by linarith
+  · intro hab
+    have : (a : ℝ) + 2 ≤ b := by exact_mod_cast (by omega : a + 2 ≤ b)
+    exact ⟨by linarith, by linarith⟩
 
-noncomputable def log2 (x : ℝ) : ℝ := Real.log x / Real.log 2
 
-theorem ceil_ineq (n h : ℕ) (hlt : (n : ℝ) < 2 ^ h) :
-    ⌈log2 ((n : ℝ) + 1)⌉ ≤ (h : ℤ) := by
+theorem ceil_ineq (n h : ℕ) (hlt : n < 2 ^ h)
+  : ⌈Real.logb 2 (n + 1)⌉ ≤ h := by
   have hle : (n : ℝ) + 1 ≤ 2 ^ h := by exact_mod_cast hlt
   have hpos : 0 < Real.log 2 := Real.log_pos (by norm_num)
-  refine Int.ceil_le.mpr ((div_le_iff₀ hpos).mpr ?_)
-  simp [← Real.log_pow]
-  exact Real.log_le_log (by linarith) hle
+  refine Int.ceil_le.mpr ?_
+  rw [Real.logb, div_le_iff₀ hpos]
+  rw [show ((h : ℤ) : ℝ) = (h : ℝ) by norm_cast, ← Real.log_pow]
+  exact Real.log_le_log (by positivity) hle
 
 
 /- 4.2
