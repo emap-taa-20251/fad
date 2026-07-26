@@ -96,8 +96,8 @@ end BST1
 
 namespace BST1
 
-example {α : Type} (t : Tree α) :
-  t.height ≤ t.size ∧ t.size < 2 ^ t.height := by
+theorem tree_size_bounds {α : Type} (t : Tree α)
+  : t.height ≤ t.size ∧ t.size < 2 ^ t.height := by
   induction t with
   | null => simp [Tree.height, Tree.size]
   | node t₁ x t₂ ihl ihr =>
