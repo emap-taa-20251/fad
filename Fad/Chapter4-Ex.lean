@@ -137,7 +137,6 @@ end BST1
 
 -- # Exercicio 4.8
 
-
 namespace BST1
 
 theorem tree_size_bounds {α : Type} (t : Tree α)
@@ -159,35 +158,6 @@ theorem tree_size_bounds {α : Type} (t : Tree α)
 
 end BST1
 
-/-
-namespace Chapter3
-
-example {α : Type} (t : Tree α) :
-  t.height ≤ t.size ∧ t.size < 2 ^ t.height := by
- induction t with
-  | leaf n =>
-    split
-    case left =>
-      dsimp [Chapter3.Tree.height, Chapter3.Tree.size]
-      exact nat.le_refl 1
-    case right =>
-      dsimp [Tree.height, Tree.size]
-      exact nat.lt_succ_self 1
-  | node n t₁ t₂ =>
-    cases ih_t₁ with | intro ih_t₁_height ih_t₁_size
-    cases ih_t₂ with | intro ih_t₂_height ih_t₂_size
-    split
-    case left =>
-      dsimp [Tree.height, Tree.size]
-      exact nat.succ_le_of_lt (max_le ih_t₁_height ih_t₂_height)
-    case right =>
-      dsimp [Tree.height, Tree.size]
-      calc
-        n < 2 ^ (1 + max t₁.height t₂.height) : by linarith [ih_t₁_size, ih_t₂_size]
-        _ = 2 ^ t.height : by rw max_comm
-
-end Chapter3
--/
 
 -- # Exercise 4.9
 
