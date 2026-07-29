@@ -1,4 +1,4 @@
-import Fad.API
+import Cslib.Algorithms.Lean.TimeM
 import Fad.Chapter1
 import Fad.Chapter3
 import Fad.Chapter5
@@ -15,6 +15,7 @@ open Chapter4.BST2 (partition3 Tree rotl Tree.height)
 open Chapter5.Mergesort (merge pairWith halve length_halve_fst length_halve_snd)
 open Chapter5.Quicksort (qsort₁)
 open Chapter5 (csort)
+open Cslib.Algorithms.Lean
 open TimeM
 
 -- # Section 6.1: minimum and maximum
@@ -74,17 +75,17 @@ theorem minimum_eq_foldrmin {a : Type} [LinearOrder a] [Inhabited a]
     | nil => exact min_comm x y
     | cons z zs ih2 => grind [foldr1]
 
-def foldr1M (f : a → a → TimeM a) : List a → TimeM a
-  | []    => ✓ default, 0
-  | [x]   => ✓ x, 0
+def foldr1M (f : a → a → TimeM ℕ a) : List a → TimeM ℕ a
+  | []    => pure default
+  | [x]   => pure x
   | x :: y :: ys => do
     let rest ← foldr1M f (y :: ys)
     f x rest
 
-def maxM (x y : Nat) : TimeM Nat :=
-  ✓ (max x y)
+def maxM (x y : Nat) : TimeM ℕ Nat := do
+  ✓ pure (max x y)
 
-def maximumM : List Nat → TimeM Nat :=
+def maximumM : List Nat → TimeM ℕ Nat :=
   foldr1M maxM
 
 theorem time_maximum (xs : List Nat) :
@@ -112,21 +113,21 @@ def minmax₁ : List a → (a × a)
       else (q.1, q.2)
     xs.foldr op (x,x)
 
-def minmax₁M : List Nat → TimeM (Nat × Nat)
-  | [] => ✓ (0, 0), 0
-  | [x] => ✓ (x, x), 0
+def minmax₁M : List Nat → TimeM ℕ (Nat × Nat)
+  | [] => pure (0, 0)
+  | [x] => pure (x, x)
   | x :: y :: ys => do
       let q ← minmax₁M (y :: ys)
-
-      if x < q.1 then
-        ✓ (x, q.2), 1
-      else do
-        if x > q.2 then
-          ✓ (q.1, x), 1
+      ✓ if x < q.1 then
+        pure (x, q.2)
+      else
+        ✓ if x > q.2 then
+          pure (q.1, x)
         else
-          ✓ (q.1, q.2), 1
+          pure (q.1, q.2)
 
-theorem time_minmax1M_worst : ∀ (xs : List Nat), (minmax₁M xs).time ≤ 2 * xs.length
+theorem time_minmax1M_worst :
+∀ (xs : List Nat), (minmax₁M xs).time ≤ 2 * xs.length
   | [] => by rfl
   | [x] => by simp [minmax₁M]
   | x :: y :: ys => by
@@ -157,21 +158,19 @@ def minmax₂ : List a → (a × a)
      (min q.1 r.1, max q.2 r.2)
 termination_by xs => xs.length
 
-def minmax2M : List Nat → TimeM (Nat × Nat)
-  | [] => ✓ (0, 0), 0
-  | [x] => ✓ (x, x), 0
+def minmax2M : List Nat → TimeM ℕ (Nat × Nat)
+  | [] => pure (0, 0)
+  | [x] => pure (x, x)
   | [x, y] => do
-    let _ ← ✓ (), 1
-    if x ≤ y then
-      ✓ (x, y), 0
+    ✓ if x ≤ y then
+      pure (x, y)
     else
-      ✓ (y, x), 0
+      pure (y, x)
   | x₁ :: x₂ :: xs => do
       let p := halve (x₁ :: x₂ :: xs)
       let q ← minmax2M p.1
       let r ← minmax2M p.2
-      let _ ← ✓ (), 2
-      ✓ (min q.1 r.1, max q.2 r.2), 0
+      ✓[2] pure (min q.1 r.1, max q.2 r.2)
 termination_by xs => xs.length
 decreasing_by
   . simp [length_halve_fst]
@@ -203,17 +202,15 @@ def mkPairs : List a → List (a × a)
     else
      (y, x) :: mkPairs xs
 
-def mkPairsM : List Nat → TimeM (List (Nat × Nat))
-  | []           => ✓ [], 0
-  | [x]          => ✓ [(x, x)], 0
+def mkPairsM : List Nat → TimeM ℕ (List (Nat × Nat))
+  | []           => pure []
+  | [x]          => pure [(x, x)]
   | x :: y :: xs => do
       let rest ← mkPairsM xs
-      let _ ← ✓ (), 1
-
-      if x ≤ y then
-        ✓ ((x, y) :: rest), 0
+      ✓ if x ≤ y then
+        pure ((x, y) :: rest)
       else
-        ✓ ((y, x) :: rest), 0
+        pure ((y, x) :: rest)
 
 theorem time_mkPairsM (xs : List Nat) : (mkPairsM xs).time = xs.length / 2 := by
   match xs with
@@ -306,20 +303,17 @@ partial def select (k : Nat) (xs : List a) (ok : k ≤ xs.length) : a :=
   else if h₂ : k ≤ m + n  then vs[k - m - 1]
   else                         select (k - m - n) ws (by grind [partition3_length])
 
-def partition3M (p : Nat) : List Nat → TimeM (List Nat × List Nat × List Nat)
-  | [] => ✓ ([], [], []), 0
+def partition3M (p : Nat) : List Nat → TimeM ℕ (List Nat × List Nat × List Nat)
+  | [] => pure ([], [], [])
   | x :: xs => do
       let res ← partition3M p xs
-
-      let _ ← ✓ (), 1
-      if x < p then
-        ✓ (x :: res.1, res.2.1, res.2.2), 0
-      else do
-        let _ ← ✓ (), 1
-        if x = p then
-          ✓ (res.1, x :: res.2.1, res.2.2), 0
+      ✓ if x < p then
+        pure (x :: res.1, res.2.1, res.2.2)
+      else
+        ✓ if x = p then
+          pure (res.1, x :: res.2.1, res.2.2)
         else
-          ✓ (res.1, res.2.1, x :: res.2.2), 0
+          pure (res.1, res.2.1, x :: res.2.2)
 
 theorem time_partition3M_le (p : Nat) (xs : List Nat) :
   (partition3M p xs).time ≤ 2 * xs.length := by
