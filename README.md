@@ -1,4 +1,5 @@
 
+
 # Functional Algorithms Design <a href='#'><img src="img/cover.jpeg" align="right" height="168" /></a>
 
 [![Build and Deploy Documentation](https://github.com/arademaker/fad/actions/workflows/docs.yaml/badge.svg)](https://github.com/arademaker/fad/actions/workflows/docs.yml)
@@ -16,7 +17,7 @@ The main goals of this adaptation are:
 - to demonstrate the expressive power of dependent types in representing and reasoning about algorithms,
 - to show how informal proofs can be systematically formalized,
 - to explore how different refinements of the same algorithm can be proven equivalent.
-- and to explore how to proof termination of functional algorithms.
+- and to explore how to prove termination of functional algorithms.
 
 Along the way, readers gain experience not only in algorithm design, but also in writing correct-by-construction programs and proving their properties rigorously. This book invites students and practitioners to see algorithmics not just as a matter of clever ideas, but also as a foundation for precise, verifiable software.
 
@@ -184,4 +185,3 @@ Please see [CONTRIBUTING.org](CONTRIBUTING.org) for guidelines on how to contrib
 ## :pushpin: License
 
 This project is licensed under Apache License 2.0. See LICENSE.
-
