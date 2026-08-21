@@ -1,7 +1,51 @@
 import Fad.Chapter4
 import Fad.Chapter3
-
+import Mathlib
 namespace Chapter4
+
+
+/- # Exercício 4.1
+
+The *rule of floors* states that for integers $n$ and real numbers $r$ we have
+$n ≤ ⌊r⌋ ↔ n ≤ r$ (Mathlib `Int.le_floor`). This useful rule will appear in a
+number of problems. Using just the rule of floors (no case analysis) prove that
+for integers $a$ and $b$ we have $a < (a+b)/2 < b$ if and only if $a + 1 < b$.
+
+The dual *rule of ceilings* states that for integers $n$ and real numbers $r$ we
+have $⌈r⌉ ≤ n ↔ r ≤ n$ (Mathlib `Int.ceil_le`). Using this rule prove that if
+$h$ is an integer such that $n < 2^h$, then $⌈log (n + 1)⌉ ≤ h$.
+-/
+
+theorem floor_ineq (a b : ℤ)
+  : (a < (a + b) / 2 ∧ (a + b) / 2 < b) ↔ a + 1 < b := by
+  -- a divisão inteira (a+b)/2 é ⌊(a+b)/2⌋ sobre ℝ
+  have hdiv : (a + b) / 2 = ⌊(a + b : ℝ) / 2⌋ := by
+    rw [show ((a + b : ℝ) / 2) = ((((a + b : ℤ) : ℚ) / ((2 : ℕ) : ℚ) : ℚ) : ℝ) by
+      push_cast; ring]
+    rw [Rat.floor_cast, Rat.floor_intCast_div_natCast]
+    norm_num
+  have floor_lt : ∀ (x : ℤ) (r : ℝ), ⌊r⌋ < x ↔ r < x :=
+    fun x r => by rw [← not_le, ← not_le, Int.le_floor]
+  -- reescreve (a < ·) como (a+1 ≤ ·) e retira os dois pisos pela regra dos pisos
+  rw [hdiv, Int.lt_iff_add_one_le, Int.le_floor, floor_lt]
+  push_cast
+  constructor
+  · rintro ⟨e1, e2⟩
+    exact_mod_cast show (a : ℝ) + 1 < b by linarith
+  · intro hab
+    have : (a : ℝ) + 2 ≤ b := by exact_mod_cast (by omega : a + 2 ≤ b)
+    exact ⟨by linarith, by linarith⟩
+
+
+theorem ceil_ineq (n h : ℕ) (hlt : n < 2 ^ h)
+  : ⌈Real.logb 2 (n + 1)⌉ ≤ h := by
+  have hle : (n : ℝ) + 1 ≤ 2 ^ h := by exact_mod_cast hlt
+  have hpos : 0 < Real.log 2 := Real.log_pos (by norm_num)
+  refine Int.ceil_le.mpr ?_
+  rw [Real.logb, div_le_iff₀ hpos]
+  rw [show ((h : ℤ) : ℝ) = (h : ℝ) by norm_cast, ← Real.log_pow]
+  exact Real.log_le_log (by positivity) hle
+
 
 /- 4.2
 We have smallest (a,b) = x such that f x < t ≤ f (x + 1)
@@ -93,58 +137,27 @@ end BST1
 
 -- # Exercicio 4.8
 
-
 namespace BST1
 
-example {α : Type} (t : Tree α) :
-  t.height ≤ t.size ∧ t.size < 2 ^ t.height := by
-  apply And.intro
-  {
-   induction t with
-   | null  => simp [Tree.height, Tree.size]
-   | node t₁ x t₂ ihl ihr =>
-     simp [Tree.height, Tree.size]
-     sorry
-  }
-  {
+theorem tree_size_bounds {α : Type} (t : Tree α)
+  : t.height ≤ t.size ∧ t.size < 2 ^ t.height := by
   induction t with
   | null => simp [Tree.height, Tree.size]
   | node t₁ x t₂ ihl ihr =>
-    simp [Tree.height, Tree.size]
-    sorry
-  }
+    constructor
+    · simp [Tree.height, Tree.size]
+      omega
+    · simp [Tree.height, Tree.size, pow_add, pow_one]
+      have hl : t₁.size < 2 ^ max t₁.height t₂.height :=
+        lt_of_lt_of_le ihl.2
+          (Nat.pow_le_pow_right (by norm_num) (le_max_left _ _))
+      have hr : t₂.size < 2 ^ max t₁.height t₂.height :=
+        lt_of_lt_of_le ihr.2
+          (Nat.pow_le_pow_right (by norm_num) (le_max_right _ _))
+      omega
 
 end BST1
 
-/-
-namespace Chapter3
-
-example {α : Type} (t : Tree α) :
-  t.height ≤ t.size ∧ t.size < 2 ^ t.height := by
- induction t with
-  | leaf n =>
-    split
-    case left =>
-      dsimp [Chapter3.Tree.height, Chapter3.Tree.size]
-      exact nat.le_refl 1
-    case right =>
-      dsimp [Tree.height, Tree.size]
-      exact nat.lt_succ_self 1
-  | node n t₁ t₂ =>
-    cases ih_t₁ with | intro ih_t₁_height ih_t₁_size
-    cases ih_t₂ with | intro ih_t₂_height ih_t₂_size
-    split
-    case left =>
-      dsimp [Tree.height, Tree.size]
-      exact nat.succ_le_of_lt (max_le ih_t₁_height ih_t₂_height)
-    case right =>
-      dsimp [Tree.height, Tree.size]
-      calc
-        n < 2 ^ (1 + max t₁.height t₂.height) : by linarith [ih_t₁_size, ih_t₂_size]
-        _ = 2 ^ t.height : by rw max_comm
-
-end Chapter3
--/
 
 -- # Exercise 4.9
 

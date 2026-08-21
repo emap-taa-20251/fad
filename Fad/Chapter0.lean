@@ -26,5 +26,4 @@ def factorial₂ : Nat → Nat
  | n + 1 => factorial₂ n * (n + 1)
 
 
-
 end Chapter0

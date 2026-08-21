@@ -1,9 +1,13 @@
 import Fad.Chapter1
 import Fad.«Chapter1-Ex»
 import Lean
+import Cslib.Algorithms.Lean.TimeM
 
 namespace Chapter2
+
 open Chapter1 (dropWhile)
+open Cslib.Algorithms.Lean
+open TimeM
 
 -- # 2.0 Complexity
 
@@ -37,37 +41,104 @@ example : fibFast 4 = 5 := by
 
 -- # 2.2 Estimating running times
 
-/-
-#eval List.append [1,2,3] [4,5,6]
-#eval List.head! (List.iota 1000)
--/
+def append' {a} : List a → List a → TimeM Nat (List a)
+  | [], ys => pure ys
+  | x :: xs, ys => do
+      ✓ return x :: (← append' xs ys)
 
-def concat₀ : List (List a) → List a
- | [] => []
- | (xs :: xss) => xs ++ concat₀ xss
 
-def concat₁ (xss : List (List a)) : List a :=
- -- dbg_trace "concat₁ with {xss.length}"
- match xss with
-  | [] => []
-  | (xs :: xss) => xs ++ concat₁ xss
+def concat₁' {a} : List (List a) → TimeM Nat (List a) :=
+  List.foldr (fun xs tys => do
+    let ys ← tys
+    ✓[xs.length] return xs ++ ys) (pure [])
 
-/-
-#eval concat₁ [[1, 2], [3, 4], [5, 6]]
+def concat₁'' {a} : List (List a) → TimeM Nat (List a)
+ | []         => pure []
+ | xs :: xss  => do
+   let res ← concat₁'' xss
+   ✓[xs.length] return xs ++ res
 
-#eval timeit "concat₁" (pure $
-  Chapter1.concat₁
-   (List.replicate 2000 <| List.replicate 100 1) |>.length)
+private lemma concat₁'_step {a : Type*}
+  (xs : List a) (xss' : List (List a)) :
+  (concat₁' (xs :: xss')).time = (concat₁' xss').time + xs.length := by
+  simp [concat₁', List.foldr]
 
-#eval timeit "concat₂" (pure $
-  Chapter1.concat₂
-   (List.replicate 2000 <| List.replicate 100 1) |>.length)
+/- if `xss` is a list of length `m` consisting of lists each of length `n`, then
+`concat₁` is `Θ(m * n)` -/
+theorem concat₁'_time (xss : List (List a))
+  (n : Nat) (h : ∀ xs ∈ xss, xs.length = n)
+  : (concat₁' xss).time = xss.length * n := by
+  induction xss with
+  | nil => simp [concat₁', List.foldr]
+  | cons xs xss' ih =>
+    have h₁ : xs.length = n := h xs List.mem_cons_self
+    have h₂ : ∀ ys ∈ xss', ys.length = n := by
+      intro ys hys
+      exact h ys (List.mem_cons_of_mem xs hys)
+    rw [concat₁'_step, ih h₂, h₁, List.length_cons]
+    ring
 
--/
+theorem concat₁''_time (xss : List (List a))
+  (n : Nat) (h : ∀ xs ∈ xss, xs.length = n)
+  : (concat₁'' xss).time = xss.length * n := by
+  induction xss with
+  | nil => simp [concat₁'']
+  | cons xs xss' ih =>
+      have h₁ : xs.length = n := h xs List.mem_cons_self
+      have h₂ : ∀ ys ∈ xss', ys.length = n := by
+        intro ys hys
+        exact h ys (List.mem_cons_of_mem xs hys)
+      simp [concat₁'', ih h₂, h₁]
+      ring
+
+
+def concat₂' {a} : List (List a) → TimeM Nat (List a) :=
+  List.foldl (fun txs ys => do
+    let xs ← txs
+    ✓[xs.length] return xs ++ ys) (pure [])
+
+def concat₂'' {a} : List (List a) → TimeM Nat (List a) → TimeM Nat (List a)
+ | [], t => t
+ | xs :: xss, t =>  do
+   let res ← t
+   concat₂'' xss (do ✓[res.length] return res ++ xs)
+
+private lemma concat₂'_step {a}
+  (xss : List (List a)) (n k : Nat)
+  (h : ∀ xs ∈ xss, xs.length = n)
+  (acc : TimeM Nat (List a))
+  (hacc : acc.ret.length = k * n)
+  : (2 * (List.foldl (fun txs ys => do
+       let xs ← txs
+       ✓[xs.length] pure $ xs ++ ys) acc xss).time : Int)
+    = 2 * acc.time + 2 * k * n * xss.length + n * xss.length * (xss.length - 1) := by
+  induction xss generalizing k acc with
+  | nil => simp
+  | cons bs bss ih =>
+    simp only [List.foldl, List.length_cons]
+    have hbs : bs.length = n := h bs List.mem_cons_self
+    have hbss : ∀ zs ∈ bss, zs.length = n :=
+      fun zs hzs => h zs (List.mem_cons_of_mem bs hzs)
+    set acc' := do let xs ← acc; ✓[xs.length] pure (xs ++ bs)
+    have hacc'_t : acc'.time = acc.time + k * n := by simp [acc', hacc]
+    have hacc'_l : acc'.ret.length = (k + 1) * n := by
+      simp [acc', List.length_append, hacc, hbs]; ring
+    specialize ih (k + 1) hbss acc' hacc'_l
+    grind only
+
+/- if `xss` is a list of length `m` consisting of lists each of length `n`, then
+`concat₂` is `Θ(m^2 * n)` or `2 * time = n * m * (m - 1)` -/
+theorem concat₂'_time (xss : List (List a))
+  (n : Nat) (h : ∀ xs ∈ xss, xs.length = n)
+  : (2 * (concat₂' xss).time : Int) = n * xss.length * (xss.length - 1) := by
+  have h₁ := concat₂'_step xss n 0 h (pure []) (by simp)
+  simp only [concat₂', time_pure] at *
+  grind only
+
 
 -- # 2.4 Amortised running times
 
-def build (p : a → a → Bool) : List a → List a :=
+def build {a} (p : a → a → Bool) : List a → List a :=
  List.foldr insert []
  where
   insert x xs := x :: dropWhile (p x) xs
@@ -79,17 +150,18 @@ example : build (· = ·) [4,4,2,1,1] = [4, 2, 1] := by
  unfold List.foldr
  unfold List.foldr
  unfold List.foldr
+ unfold List.foldr
+ set p := (fun x1 x2 : Nat => decide (x1 = x2)) with hp
  unfold build.insert
  rw [dropWhile]
  rw [dropWhile]
  rw [dropWhile]
- simp
  rfl
 
 
 /- primeiro argumento evita lista infinita -/
 def iterate : Nat → (a → a) → a → List a
- | 0, _, x => [x]
+ | 0         , _, x => [x]
  | Nat.succ n, f, x => x :: iterate n f (f x)
 
 def bits (n : Nat) : List (List Bool) :=
@@ -97,9 +169,8 @@ def bits (n : Nat) : List (List Bool) :=
  where
    inc : List Bool → List Bool
    | [] => [true]
-   | (false :: bs) => true :: bs
-   | (true :: bs) => false :: inc bs
-
+   | false :: bs => true :: bs
+   | true  :: bs => false :: inc bs
 
 def init₀ : List α → List α
 | []      => panic! "no elements"

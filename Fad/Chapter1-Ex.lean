@@ -7,7 +7,7 @@ namespace Chapter1
 
 def inits {a} : List a → List (List a)
 | [] => [[]]
-| (x :: xs) => [] :: (inits xs).map (fun ys => x :: ys)
+| (x :: xs) => [] :: (inits xs).map (x :: ·)
 
 def tails {a} : List a → List (List a)
 | [] => [[]]
@@ -19,8 +19,7 @@ def dropWhile {α} (p : α → Bool) : (xs : List α) → List α
 
 /- # Exercicio 1.2 -/
 
-def uncons {α : Type} (xs : List α) : Option (α × List α) :=
-  match xs with
+def uncons {α : Type} : (xs : List α) → Option (α × List α)
   | [] => none
   | x :: xs => some (x, xs)
 
@@ -29,8 +28,9 @@ def uncons {α : Type} (xs : List α) : Option (α × List α) :=
 
 def wrap {α : Type} (a : α) : List α := [a]
 
-example : wrap 0 = [0] := rfl
-example : wrap [42] = [[42]] := rfl
+example : ∀ x : a, wrap x = [x] := by
+  unfold wrap
+  grind
 
 def unwrap {α : Type} (a : List α) : Option α :=
   match a with
@@ -39,11 +39,7 @@ def unwrap {α : Type} (a : List α) : Option α :=
 
 def unwrap! {α : Type} [Inhabited α]  : (a : List α) → α
  | [x] => x
- | _   => panic! "unwrap!: empty list"
-
-example : unwrap [42] = some 42 := rfl
-example : unwrap [0, 1] = none := rfl
-example : unwrap (@List.nil Nat) = none := rfl
+ | _   => panic! "unwrap!: not single list"
 
 def single {α : Type} (a : List α) : Bool :=
   match a with
@@ -54,19 +50,14 @@ example : single [42] = true := rfl
 example : single [0, 1] = false := rfl
 example : single ([] : List Nat) = false := rfl
 
-theorem single_aux {x : Nat} {xs : List Nat}
-  : single (x :: xs) = true ↔ xs = [] := by
-  cases xs with
-  | nil => simp [single]
-  | cons a xs => simp [single]
-
-example : ∀ xs : List Nat, single xs = true ↔ xs.length = 1 := by
+example : ∀ xs : List Nat, single xs ↔ xs.length = 1 := by
   intro xs
   induction xs with
   | nil => simp [single]
-  | cons x xs _ =>
-    rw [single_aux]
-    simp [List.length]
+  | cons x xs ih =>
+    cases xs with
+    | nil => simp [single]
+    | cons a xs => simp [single]
 
 
 /- # Exercicio 1.4 -/
@@ -284,6 +275,82 @@ partial def perms₃ {α : Type} [DecidableEq α] : List α → List (List α)
 | []  => [[]]
 | as  =>
   as.flatMap (λ x => (perms₃ (remove x as)).map (λ ys => x :: ys))
+
+
+/- # Exercício 1.17 -/
+
+def replace (x : Int) : Int := if Even x then x else 0
+
+def f (x y : Int) : Int := 2 * x + y
+
+/- using `h = replace` and `f = g`, the general condition from the fusion law
+does not work `∀ x y, h (f x y) = g x (h y)` for `x = 1` and `y = 1`. That is,
+`replace (f 1 1) ≠ f 1 (replace 1)`
+-/
+
+theorem foldr_fusion_cxt {a b c : Type}
+ (f : a → c → c) (e : c) (xs : List a)
+ (g : a → b → b) (h : c → b)
+ (h₁ : ∀ x (ys : List a), h (f x (ys.foldr f e)) = g x (h (ys.foldr f e)))
+ : h (List.foldr f e xs) = List.foldr g (h e) xs := by
+ induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+    simp [List.foldr]
+    rw [h₁ x xs, ih]
+
+/-- `replace` é a identidade em todo valor computado por `foldr f 0`,
+  pois esses valores são sempre pares. --/
+theorem replace_of_even {x : Int} (h : Even x) : replace x = x := by
+  simp [replace, h]
+
+theorem even_foldr_f (xs : List Int) : Even (xs.foldr f 0) := by
+  induction xs with
+  | nil => exact ⟨0, rfl⟩
+  | cons x xs ih =>
+    simpa [f, Int.even_add] using ih
+
+theorem replace_foldr_f_eq
+  : replace ∘ List.foldr f 0 = List.foldr f 0 := by
+  funext xs
+  refine foldr_fusion_cxt f 0 xs f replace (fun x ys => ?_)
+  have he : Even (ys.foldr f 0) := even_foldr_f ys
+  rw [replace_of_even he,
+      replace_of_even (by simpa [f, Int.even_add] using he)]
+
+
+/- # Exercício 1.18 -/
+
+/-- Fusion law for `foldl`.
+
+  The intuition mirrors the `foldr` fusion law: we want to push a
+  post-processing function `h` *inside* a `foldl`, replacing an accumulator of
+  type `c` by an already-transformed accumulator of type `b`.
+
+  The hypothesis `h₁ : ∀ y x, h (f y x) = g (h y) x` states that `h` turns one
+  step of `f` (taken on the untransformed accumulator) into the corresponding
+  step of `g` (taken on the transformed accumulator). In other words, `h` is a
+  step-by-step homomorphism between the two accumulators: the diagram commutes
+  for every element `x` of the list.
+
+  Consequently, applying `h` to the final result of `xs.foldl f e` is the same
+  as running `xs.foldl g` starting from the transformed accumulator `h e`.
+
+  Note the contrast with `foldr` fusion: since in `foldl` the accumulator sits
+  on the *left*, the condition relates `h (f y x)` to `g (h y) x`, keeping `x`
+  on the same side. --/
+theorem foldl_fusion {a b c : Type}
+  (f : c → a → c) (g : b → a → b) (h : c → b)
+  (h₁ : ∀ y x, h (f y x) = g (h y) x)
+  : ∀ e (xs : List a), h (xs.foldl f e) = xs.foldl g (h e) := by
+  intro y xs
+  induction xs generalizing y with
+  | nil => rfl
+  | cons x xs ih =>
+    rewrite [List.foldl]
+    rewrite [ih]
+    rewrite [h₁]
+    rfl
 
 
 /- # Exercicio 1.20 -/

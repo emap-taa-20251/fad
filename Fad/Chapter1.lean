@@ -418,23 +418,23 @@ theorem foldl_comp {α β: Type} (y: α) (e : β) (f : β → α → β):
 
 -- ## Seciton 1.5 Accumulating and tupling
 
+-- `where` notation has some limitations ask-lean-fro
+
 def collapse₀ (xss : List (List Int)) : List Int :=
- help [] xss
- where
-  help (xs : List Int) (xss : List (List Int)) : List Int :=
+  let rec help (xs : List Int) (xss : List (List Int)) : List Int :=
     if h : xs.sum > 0 ∨ xss.isEmpty
     then xs
     else
       have h₁ : xss ≠ [] := by
-       simp at h
-       intro contra
-       exact h.right contra
-      have : xss.length - 1 < xss.length := by
-       cases xss with
-       | nil       => contradiction
-       | cons _ _  => simp
+        simp at h
+        intro contra
+        exact h.right contra
       help (xs.append $ xss.head h₁) xss.tail
   termination_by xss.length
+  decreasing_by
+    simp
+    grind
+  help [] xss
 
 
 def collapse₁ (xss : List (List Int)) : List Int :=
@@ -506,7 +506,7 @@ private lemma collapse₁_help_eq (xss : List (List Int))
     · have hs2 : s > 0 := hs ▸ hpos
       simp [hpos, hs2, hf]
     · have hs2 : ¬ s > 0 := hs ▸ hpos
-      simp only [hpos, hs2, ↓reduceIte]
+      simp only [hpos, hs2]
       apply ih
       · simp [hs, List.sum_append]
       · intro ys; simp [hf, List.append_assoc]

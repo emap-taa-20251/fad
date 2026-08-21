@@ -13,11 +13,11 @@ def snoc {a : Type} (x : a) (xs : List a) : List a :=
   xs ++ [x]
 
 
-namespace SL1
+namespace DoesNotWork
 
 variable {α : Type}
 
-abbrev SymList (α : Type u) := (List α) × (List α)
+abbrev SymList α := (List α) × (List α)
 
 def nilSL : SymList α := ([], [])
 
@@ -37,39 +37,19 @@ example (x : α) (xs : SymList α)
  : (snoc x ∘ fromSL) xs = (fromSL ∘ snocSL x) xs
  := by
  have (as, bs) := xs
- unfold Function.comp snoc
+ unfold Function.comp
+ unfold snoc
  induction as generalizing bs with
  | nil =>
-   simp [fromSL, snocSL]; sorry
+   simp [fromSL, snocSL]
+   sorry
  | cons y ys ih =>
-   simp [fromSL, snoc, snocSL, List.reverse_cons,
-         List.append_assoc]
+   simp [fromSL, snocSL, List.reverse_cons, List.append_assoc]
 -/
 
-end SL1
+end DoesNotWork
 
-/-
-#check ([] : List Nat)
-#eval ([] : List Nat).head?
-#eval [1,2].head?
-#eval [].head (by simp)
-#eval [1,2].head (by simp)
 
-def test (xs : List α) (ok : xs.length > 2) : α := xs[2]
-#eval test [1, 2, 3, 4] (by simp)
--/
-
-open Chapter1 (dropWhile)
-
-/- it may simplify the proofs
-
-structure SymList' (a : Type) where
-  lhs : List a
-  rhs : List a
-  ok : (lhs.length = 0 → rhs.length ≤ 1) ∧
-       (rhs.length = 0 → lhs.length ≤ 1)
- deriving Repr
--/
 
 structure SymList (a : Type) where
   lhs : List a
@@ -98,7 +78,8 @@ def snocSL : a → SymList a → SymList a
 | z, ⟨ [], bs, _ ⟩ => ⟨bs, [z], by simp⟩
 | z, ⟨ a :: as, bs, _ ⟩ => ⟨a :: as, z :: bs, by simp⟩
 
-example (x : a) : cons x ∘ fromSL = fromSL ∘ consSL x := by
+theorem cons_fromSL_eq_fromSL_consSL (x : a)
+ : cons x ∘ fromSL = fromSL ∘ consSL x := by
  funext s
  cases s with
  | mk as bs h =>
@@ -116,7 +97,8 @@ example (x : a) : cons x ∘ fromSL = fromSL ∘ consSL x := by
        rw [h1]; simp
    | cons z zs => simp [consSL, fromSL]
 
-example (x : a) : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
+theorem snoc_fromSL_eq_fromSL_snocSL (x : a)
+  : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
   funext sl
   simp [Function.comp]
   have ⟨lhs, rhs, ok⟩ := sl
@@ -133,26 +115,20 @@ example (x : a) : snoc x ∘ fromSL = fromSL ∘ snocSL x := by
 def isEmpty (sl : SymList a) : Bool :=
   sl.lhs.isEmpty ∧ sl.rhs.isEmpty
 
-theorem sl_empty_l_empty :
-  ∀ sl : SymList a, isEmpty sl → (fromSL sl).isEmpty := by
-  intro sl h
-  have ⟨as, bs, h₁⟩ := sl
-  unfold isEmpty at h
-  simp at h
-  simp [fromSL]
-  assumption
 
-theorem sl_noempty_l_noempty :
-  ∀ sl : SymList a, ¬ isEmpty sl → (fromSL sl) ≠ [] := by
-  intro sl h
-  have ⟨as, bs, h₁⟩ := sl
-  unfold isEmpty at h
-  simp at h
-  simp [fromSL]
-  assumption
+theorem fromSL_isEmpty_iff_isEmpty (sl : SymList a)
+  : (fromSL sl).isEmpty ↔ isEmpty sl := by
+  cases sl with
+  | mk as bs ok =>
+    simp [isEmpty, fromSL]
+
+theorem fromSL_ne_nil_of_not_isEmpty (sl : SymList a) (h : ¬ isEmpty sl)
+  : fromSL sl ≠ [] := by
+  intro he
+  exact h ((fromSL_isEmpty_iff_isEmpty sl).mp (List.isEmpty_iff.mpr he))
 
 
-def lastSL (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
+def getLast (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
  match sl with
  | ⟨xs, ys, ok⟩ =>
    if h₁ : ys.isEmpty then
@@ -166,49 +142,26 @@ def lastSL (sl : SymList a) (ne : ¬ isEmpty sl) : a :=
    else
      ys.head (by simp at h₁ ; exact h₁)
 
-def lastSL? : SymList a → Option a
+def getLast? : SymList a → Option a
  | ⟨[]    , []    , _⟩ => none
  | ⟨x :: _, []    , _⟩ => x
  | ⟨_     , y :: _, _⟩ => y
 
 
-/-
-example (sl : SymList a) (h : ¬ isEmpty sl)
-  : (fromSL sl).getLast (sl_noempty_l_noempty sl h) = lastSL sl h := by
-  let ⟨as, bs, h₂⟩ := sl
-  unfold lastSL fromSL
-  have h₃ := sl_noempty_l_noempty _ h
-  simp [fromSL] at h₃ ; simp
-  split_ifs with h₁
-  · -- Case: bs.isEmpty is true
-    rewrite [h₁] at h₂ ; simp at h₂
-    apply Or.elim h₂ ; intro h₄
-    rw [h₄]
-    sorry
-    simp [List.getLast_append_of_ne_nil]
-    apply h₃
-  · -- Case: bs.isEmpty is false
-    simp [List.getLast_append]
-    simp at h₁
-    sorry
-    -- rw [List.getLast_reverse]
-    · exact h₁
-
-example {a : Type} : List.getLast? ∘ fromSL = @lastSL a := by
-  funext sl
-  have ⟨lhs, rhs, ok⟩ := sl
-  simp [Function.comp, lastSL, fromSL]
-  split <;> rename_i h
-  rw [List.isEmpty_iff] at h
-  subst h
-  simp at ok ⊢
-  apply ok.elim <;> intro h2
-  simp [h2]
-  have y :: [] := lhs
-  simp
-  have z :: _ := rhs
-  simp
--/
+theorem fromSL_getLast_eq_getLast (sl : SymList a) (h : ¬ isEmpty sl)
+  : (fromSL sl).getLast (fromSL_ne_nil_of_not_isEmpty sl h) = sl.getLast h := by
+  cases sl with
+  | mk as bs ok =>
+    cases bs with
+    | cons b bs' =>
+      -- Case: bs is non-empty, so getLast = bs.head
+      simp only [fromSL, getLast]
+      rw [List.getLast_append_of_ne_nil (h₂ := by simp)]
+      exact List.getLast_reverse _
+    | nil =>
+      -- Case: bs = [], the invariant forces as to be a singleton
+      match as, ok.2 (by rfl) with
+      | [x], h₂ => simp [fromSL, getLast]
 
 
 def _root_.List.toSL : List a → SymList a
@@ -227,8 +180,10 @@ def headSL! [Inhabited a] : SymList a → a
 
 
 def singleSL (sl : SymList a): Bool :=
-  (List.single sl.lhs ∧ sl.rhs.isEmpty) ∨
-  (List.single sl.rhs ∧ sl.lhs.isEmpty)
+ match sl with
+ | mk as [] _ => as.single
+ | mk [] bs _ => bs.single
+ | mk _ _ _   => false
 
 def lengthSL (sl : SymList a) : Nat :=
   sl.lhs.length + sl.rhs.length
@@ -236,6 +191,7 @@ def lengthSL (sl : SymList a) : Nat :=
 
 /- subtipos -/
 
+@[simp]
 def splitInTwoSL (xs : List a) : SymList a :=
   let p := List.MergeSort.Internal.splitInTwo (Subtype.mk xs (by rfl))
   SymList.mk p.1.val p.2.val.reverse (by
@@ -260,9 +216,11 @@ def tailSL {a : Type} (as : SymList a) : SymList a :=
          all_goals intro h3; have k :: (l :: ms) := xs
          repeat simp [ok] at *)
 
-example : ∀ (as : SymList a), fromSL (tailSL as) = tail (fromSL as) := by
-  intro sl
-  have ⟨xs, ys, ok⟩ := sl
+
+theorem tailSL_eq_tail
+  : fromSL ∘ @tailSL a = tail ∘ fromSL := by
+  funext as
+  have ⟨xs, ys, ok⟩ := as
   cases xs with
   | nil =>
     induction ys with
@@ -275,18 +233,17 @@ example : ∀ (as : SymList a), fromSL (tailSL as) = tail (fromSL as) := by
   | cons a as =>
     induction ys with
     | nil =>
-      by_cases h : as = [] <;> simp [h, fromSL, tailSL, splitInTwoSL]
+      by_cases h : as = [] <;> simp [h, fromSL, tailSL]
     | cons b bs ih =>
       by_cases h: as = []
       . simp [h, List.tail, fromSL] at ih
         simp [h, fromSL, tailSL]
-        simp [splitInTwoSL]
       . simp [tailSL, h, fromSL]
 
 
-theorem length_sl_eq_length (xs : List a)
+theorem lengthSL_splitInTwoSL_eq_length (xs : List a)
  : lengthSL (splitInTwoSL xs) = List.length xs := by
-  simp [splitInTwoSL, lengthSL]
+  simp [lengthSL]
   omega
 
 
@@ -306,7 +263,7 @@ theorem length_tail_lt_length (sl : SymList a) (h : sl ≠ nil)
       | inr m => simp [m]
   · simp_all
     by_cases l: lsl.length = 1
-    · simp [l, splitInTwoSL, Nat.min_def]
+    · simp [l, Nat.min_def]
       by_cases q: (rsl.length + 1) / 2 ≤ rsl.length
       · simp [q]
       simp [q]
@@ -339,27 +296,27 @@ theorem lengthSL_zero_iff_nilSL: lengthSL sl = 0 ↔ sl = nil := by
   unfold nil lengthSL
   simp
 
+
 def dropWhileSL (p : a → Bool) (sl : SymList a) : SymList a :=
-  if sl.lhs.isEmpty ∧ sl.rhs.isEmpty then nil else
-    match h: headSL sl with
-    | none => nil
-    | some hsl =>
-      if p hsl then
-        let tl := tailSL sl
-        have : lengthSL (tailSL sl) < lengthSL sl :=
-         length_tail_lt_length sl (by
-          if h2: sl = nil then
-            rw [← headSL_none_iff_nilSL] at h2
-            rw [h2] at h
-            contradiction
-          else
-            exact h2)
-        dropWhileSL p tl
-      else sl
-  termination_by lengthSL sl
+  match h : headSL sl with
+  | none => nil
+  | some hsl =>
+    if p hsl then
+      let tl := tailSL sl
+      have : lengthSL (tailSL sl) < lengthSL sl :=
+        length_tail_lt_length sl (by
+         if h2: sl = nil then
+          rw [← headSL_none_iff_nilSL] at h2
+          rw [h2] at h
+          contradiction
+         else
+          exact h2)
+      dropWhileSL p tl
+    else sl
+termination_by lengthSL sl
 
 
-example : List.head? ∘ fromSL = @headSL a := by
+theorem head?_fromSL_eq_headSL : List.head? ∘ fromSL = @headSL a := by
   funext sl
   have ⟨lhs, rhs, ok⟩ := sl
   simp [Function.comp, headSL, fromSL]
@@ -374,57 +331,41 @@ example : List.head? ∘ fromSL = @headSL a := by
   simp [ok]
 
 
-/-
-example : List.dropLast ∘ fromSL = fromSL ∘ @initSL a := by
-  funext sl
-  have ⟨lhs, rhs, ok⟩ := sl
-  simp [fromSL]
-  unfold List.dropLast
-  by_cases hl: lhs = []
-  subst hl
-  simp at ok
-  . by_cases hr: rhs = []
-    . subst hr
-      simp [initSL, nil]
-    . have _ :: [] := rhs
-      simp [initSL, splitInTwoSL]
-  . by_cases hr: rhs = []
-    . subst hr
-      simp [hl] at ok
-      have _ :: [] := lhs
-      simp [initSL, nil]
-    . match hc: lhs ++ rhs.reverse with
-      | [] =>
-        rw [List.append_eq_nil_iff] at hc
-        have ⟨hln, _⟩ := hc
-        contradiction
-      | [_] =>
-        rw [←(not_congr (List.length_eq_zero_iff)),
-            ← ne_eq, Nat.ne_zero_iff_zero_lt] at hl hr
-        have h2 : lhs.length + rhs.length > 1 := by omega
-        have h3 := congrArg List.length hc
-        simp at h3
-        simp [h3] at h2
-      | a :: as =>
-        induction lhs ++ rhs.reverse with
-        | nil =>
-          have j :: js := lhs
-          have k :: ks := rhs
-          simp [← hc, initSL]
-          by_cases hk: ks = [] <;> (
-            by_cases hj: js = [] <;>
-              simp [hk, hj, splitInTwoSL]
-          )
-        | cons _ _ ih =>
-          assumption
--/
+theorem fromSL_eq_cons_fromSL_tailSL (sl : SymList a) (x : a)
+    (h : headSL sl = some x)
+  : fromSL sl = x :: fromSL (tailSL sl) := by
+  have hhead : (fromSL sl).head? = some x := by
+    have := congrFun head?_fromSL_eq_headSL sl
+    simp [Function.comp] at this
+    rw [this, h]
+  have htail : fromSL (tailSL sl) = (fromSL sl).tail := by
+    have := congrFun (@tailSL_eq_tail a) sl
+    simpa [Function.comp] using this
+  rw [htail]
+  cases hc : fromSL sl with
+  | nil => rw [hc] at hhead; simp at hhead
+  | cons y ys =>
+    rw [hc] at hhead
+    simp at hhead
+    simp [hhead]
 
-example (p : a → Bool)
-  : dropWhile p ∘ fromSL = fromSL ∘ dropWhileSL p := by
+
+theorem dropWhile_eq_dropWhileSL (p : a → Bool)
+  : List.dropWhile p ∘ fromSL = fromSL ∘ dropWhileSL p := by
   funext sl
-  have ⟨lhs, rhs, ok⟩ := sl
-  simp [Function.comp]
-  sorry
+  simp only [Function.comp]
+  fun_induction dropWhileSL p sl with
+  | case1 sl hnone =>
+    rw [headSL_none_iff_nilSL] at hnone
+    subst hnone
+    simp [nil, fromSL]
+  | case2 sl hsl hhead hp tl _hterm ih =>
+    rw [fromSL_eq_cons_fromSL_tailSL sl hsl hhead]
+    rw [List.dropWhile_cons_of_pos (by simpa using hp)]
+    exact ih
+  | case3 sl hsl hhead hp =>
+    rw [fromSL_eq_cons_fromSL_tailSL sl hsl hhead]
+    rw [List.dropWhile_cons_of_neg (by simpa using hp)]
 
 
 end SymList
@@ -440,7 +381,7 @@ def inits₂ {a : Type} : List a → List (List a) :=
  List.map SymList.fromSL ∘ List.scanl (flip SymList.snocSL) SymList.nil
 
 
-/- trying to prove inits₁ = inits₂ -/
+/- Let us show that inits₁ = inits₂ -/
 
 theorem tails_append_singleton (xs : List α) (x : α) :
     (xs ++ [x]).tails = xs.tails.map (fun ys => ys ++ [x]) ++ [[]] := by
@@ -493,19 +434,37 @@ theorem fromSL_snoc {α} (z : α) (sl : SymList α) :
             List.append_assoc]
 
 
-theorem inits_eq {a : Type} : ∀ xs : List a, inits₁ xs = inits₂ xs
-  | [] => by
+theorem fromSL_foldl_snocSL {α} (zs : List α) (sl : SymList α) :
+    SymList.fromSL (List.foldl (flip SymList.snocSL) sl zs)
+      = SymList.fromSL sl ++ zs := by
+  induction zs generalizing sl with
+  | nil => simp
+  | cons z zs ih =>
+    simp [List.foldl_cons, flip, ih, fromSL_snoc]
+
+
+theorem inits_eq {a : Type} (xs : List a) : inits₁ xs = inits₂ xs := by
+  induction xs using List.reverseRecOn with
+  | nil =>
     unfold inits₁ inits₂ SymList.fromSL SymList.nil
     simp
-  | x :: xs => by
-    have ih := inits_eq xs
-    simp [inits₁, inits₂,
-          List.reverse_cons,
-          Function.comp, flip] at *
-    sorry
+  | append_singleton ys y ih =>
+    have hleft : inits₁ (ys ++ [y]) = inits₁ ys ++ [ys ++ [y]] := by
+      simp [inits₁, Function.comp, List.reverse_append,
+            List.reverse_cons, List.map_append, List.reverse_reverse]
+    have hright : inits₂ (ys ++ [y]) = inits₂ ys ++ [ys ++ [y]] := by
+      simp only [inits₂, Function.comp, List.scanl_append, List.map_append]
+      congr 1
+      simp only [List.scanl_cons, List.scanl_nil, List.tail_cons,
+                 List.map_cons, List.map_nil, flip]
+      rw [fromSL_snoc, fromSL_foldl_snocSL]
+      simp [SymList.fromSL, SymList.nil]
+    rw [hleft, hright, ih]
 
 
 -- # Section 3.2 Random-access lists
+
+namespace RAList
 
 def fetch {a : Type} : Nat → List a → Option a
  | _, []      => none
@@ -543,9 +502,6 @@ def Tree.height : Tree α → Nat
 def Tree.mk (t₁ t₂ : Tree a) : Tree a :=
  node (t₁.size + t₂.size) t₁ t₂
 
-open Tree
-
--- #eval mk (mk (leaf 'a') (leaf 'b')) (mk (leaf 'c') (leaf 'd'))
 
 inductive Digit (a : Type) : Type where
  | zero : Digit a
@@ -559,12 +515,10 @@ def Digit.toString [ToString α] : Digit α → String
 instance {α : Type} [ToString α] : ToString (Digit α) where
   toString := Digit.toString
 
-open Digit
+end RAList
 
--- works with def too
-abbrev RAList (a : Type) : Type := List (Digit a)
+abbrev RAList (a : Type) : Type := List (RAList.Digit a)
 
--- #check ([Digit.zero, Digit.zero] : RAList Nat)
 
 def concat1 {a : Type} : List (List a) → List a :=
  List.foldr List.append []
@@ -572,10 +526,11 @@ def concat1 {a : Type} : List (List a) → List a :=
 def concatMap (f : a → List b) : List a → List b :=
  concat1 ∘ (List.map f)
 
+namespace RAList
 
 def fromT : Tree a → List a
- | (leaf x) => [x]
- | (node _ t₁ t₂) => fromT t₁ ++ fromT t₂
+ | .leaf x => [x]
+ | .node _ t₁ t₂ => fromT t₁ ++ fromT t₂
 
 def fromRA : RAList a → List a :=
   concatMap frm
@@ -584,47 +539,33 @@ def fromRA : RAList a → List a :=
    | Digit.zero => []
    | Digit.one t => fromT t
 
-/-
-#eval fromRA [zero,
-        one (mk (leaf 'a') (leaf 'b')),
-        one (mk (mk (leaf 'c') (leaf 'd'))
-                (mk (leaf 'e') (leaf 'f')))]
--/
 
 def fetchT [ToString a] (n : Nat) (t : Tree a) : Option a :=
  match n, t with
- | 0, leaf x => x
- | k, (node n t₁ t₂) =>
+ | 0, .leaf x       => x
+ | k, .node n t₁ t₂ =>
    let m := n / 2
    if k < m then fetchT k t₁ else fetchT (k - m) t₂
- | _, leaf _ => none
+ | _, .leaf _ => none
 
 def fetchRA [ToString a] (n : Nat) (ra : RAList a) : Option a :=
  match n, ra with
  | _, [] => none
- | k, (zero :: xs) => fetchRA k xs
- | k, (one t :: xs) =>
-   if k < size t then fetchT k t else fetchRA (k - size t) xs
+ | k, .zero :: xs  => fetchRA k xs
+ | k, .one t :: xs =>
+   if k < t.size then fetchT k t else fetchRA (k - t.size) xs
 
-/-
-#eval fetchRA 10 [zero,
-        one (mk (leaf 'a') (leaf 'b')),
-        one (mk (mk (leaf 'c') (leaf 'd'))
-                (mk (leaf 'e') (leaf 'f')))]
--/
 
 def nilRA {a : Type} : RAList a := []
 
 def consRA {a : Type} (x : a) (xs : RAList a) : RAList a :=
+ let rec consT : Tree a → RAList a → RAList a
+  | t1, [] => [Digit.one t1]
+  | t1, Digit.zero :: xs => Digit.one t1 :: xs
+  | t1, Digit.one t2 :: xs => Digit.zero :: consT (Tree.mk t1 t2) xs
  consT (Tree.leaf x) xs
-where
- consT : Tree a → RAList a → RAList a
- | t1, [] => [Digit.one t1]
- | t1, Digit.zero :: xs => Digit.one t1 :: xs
- | t1, Digit.one t2 :: xs => Digit.zero :: consT (Tree.mk t1 t2) xs
 
--- #eval [3,1,6,8,9,0,5] |>.foldl (λ a r => consRA r a) nilRA
-
+end RAList
 
 /- # Section 3.3 Arrays -/
 
@@ -659,7 +600,8 @@ instance instIxChar : Ix Char where
 
 def listArray {i e : Type}  [Ix i] (bnds : i × i) (xs : List e)
   : Lean.AssocList i e :=
-  (Ix.range bnds).zip xs |>.toAssocList'
+  (Ix.range bnds).zip xs |> Lean.List.toAssocList'
+
 
 -- #eval listArray (0,5) [10, 20, 30, 40, 50] |>.toList
 
