@@ -800,9 +800,11 @@ theorem key_fact (d : Denom) (t₁ t₂ : Tuple) (h : le₃ t₁ t₂ = true) :
   refine ⟨(coins t₁ ++ [c], residue t₁ - c * d, count t₁ + c), ?_, ?_⟩
   · simp only [extend, List.mem_map, List.mem_range]
     exact ⟨c, by rw [hr]; exact hc, rfl⟩
-  · simp only [le₃, decide_eq_true_eq, residue, count]
-    constructor
-    · simp [residue] at hr
+  · -- strip the `decide` first; unfolding the projections in the same `simp`
+    -- call blocks `decide_eq_true_eq` from firing
+    simp only [le₃, decide_eq_true_eq]
+    refine ⟨?_, ?_⟩
+    · simp only [residue] at hr ⊢
       rw [hr]
     · exact Nat.add_le_add_right hk c
 
@@ -951,10 +953,12 @@ theorem key_fact (w : Weight) (i : Item) (sn₁ sn₂ : Selection) (h : le₄ sn
   · refine ⟨add i sn₁, ?_, ?_⟩
     · rw [extend, List.mem_filter]
       refine ⟨by simp, ?_⟩
-      simp only [within, decide_eq_true_eq, weight_add]
+      simp only [within, decide_eq_true_eq]
+      simp only [weight_add]
       calc weight i + weight sn₁ ≤ weight i + weight sn₂ := Nat.add_le_add_left hw _
         _ ≤ w := by simpa using hin
-    · simp only [le₄, decide_eq_true_eq, value_add, weight_add]
+    · simp only [le₄, decide_eq_true_eq]
+      simp only [value_add, weight_add]
       exact ⟨Nat.add_le_add_left hv _, Nat.add_le_add_left hw _⟩
 
 /-! ### The algorithm
